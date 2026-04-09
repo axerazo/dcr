@@ -3,7 +3,7 @@
 // ============================================================
 
 import { create } from 'zustand'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseMisconfigured } from '@/lib/supabase'
 import type { Session, User } from '@supabase/supabase-js'
 
 interface AuthState {
@@ -25,12 +25,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 }))
 
-// Initialize session from Supabase on app load
-supabase.auth.getSession().then(({ data: { session } }) => {
-  useAuthStore.getState().setSession(session)
-})
+// Only initialize Supabase auth if env vars are present
+if (!supabaseMisconfigured) {
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    useAuthStore.getState().setSession(session)
+  })
 
-// Keep session in sync with Supabase auth state changes
-supabase.auth.onAuthStateChange((_event, session) => {
-  useAuthStore.getState().setSession(session)
-})
+  supabase.auth.onAuthStateChange((_event, session) => {
+    useAuthStore.getState().setSession(session)
+  })
+} else {
+  // Mark loading done so the app renders the setup screen immediately
+  useAuthStore.getState().setSession(null)
+}

@@ -135,6 +135,14 @@ export function RegisterView({ account }: RegisterViewProps) {
     [addTransaction],
   )
 
+  const handleOpeningBalanceChange = useCallback(
+    (newBalance: number) => {
+      if (!register) return
+      updateRegister.mutate({ id: register.id, opening_balance: newBalance })
+    },
+    [register, updateRegister],
+  )
+
   // --- Render ---
   const monthLabel =
     activeMonth === 0
@@ -275,6 +283,7 @@ export function RegisterView({ account }: RegisterViewProps) {
         onSave={handleSave}
         onVoid={handleVoid}
         onCreate={handleCreate}
+        onOpeningBalanceChange={handleOpeningBalanceChange}
       />
 
       {/* Month navigation tab bar */}

@@ -4,7 +4,7 @@
 // Scheduled auto-trigger fires in real time from notes field.
 // ============================================================
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { StatusIcon, statusRowClass } from '@/components/ui/StatusIcon'
 import { formatCurrency, parseCurrencyInput, detectScheduledPhrase } from '@/lib/balance'
 import type { Transaction, TransactionStatus } from '@/types'
@@ -18,6 +18,7 @@ const STATUS_OPTIONS: { value: TransactionStatus; label: string }[] = [
 
 interface TransactionRowProps {
   transaction: Transaction
+  rowIndex: number
   isLocked: boolean
   onSave: (id: string, changes: Partial<Transaction>) => void
   onVoid: (id: string) => void
@@ -43,10 +44,24 @@ function toEditState(tx: Transaction): EditState {
   }
 }
 
-export function TransactionRow({ transaction: tx, isLocked, onSave, onVoid }: TransactionRowProps) {
+export function TransactionRow({ transaction: tx, rowIndex, isLocked, onSave, onVoid }: TransactionRowProps) {
   const [editing, setEditing] = useState<EditState | null>(null)
   const [debitCreditError, setDebitCreditError] = useState(false)
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const statusMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close status menu when clicking outside
+  useEffect(() => {
+    if (!statusMenuOpen) return
+    function handleOutsideClick(e: MouseEvent) {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(e.target as Node)) {
+        setStatusMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [statusMenuOpen])
   const isVoid = tx.status === 'void'
   const rowClass = statusRowClass(tx.status)
 
@@ -130,6 +145,7 @@ export function TransactionRow({ transaction: tx, isLocked, onSave, onVoid }: Tr
   }
 
   function handleStatusChange(newStatus: TransactionStatus) {
+    setStatusMenuOpen(false)
     if (newStatus === 'void') {
       onVoid(tx.id)
     } else {
@@ -144,16 +160,24 @@ export function TransactionRow({ transaction: tx, isLocked, onSave, onVoid }: Tr
 
   const display = editing ?? toEditState(tx)
 
+  // Zebra stripe only when no status color overrides it
+  const hasStatusColor = ['in_flight','pending','cleared','void'].includes(tx.status)
+  const zebraClass = !hasStatusColor
+    ? rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50'
+    : ''
+
   return (
     <tr
-      className={`group border-b border-slate-100 text-sm transition-colors ${rowClass} ${
+      className={`group border-b border-slate-200 text-sm transition-colors ${zebraClass} ${rowClass} ${
         isVoid ? 'line-through text-slate-400' : ''
-      } ${isLocked ? 'cursor-default' : 'cursor-text'}`}
+      } ${isLocked ? 'cursor-default' : 'cursor-text'} ${
+        !isLocked && !isVoid && !editing ? 'hover:brightness-95' : ''
+      }`}
       onClick={!editing && !isLocked && !isVoid ? startEdit : undefined}
       onKeyDown={editing ? handleKeyDown : undefined}
     >
       {/* Check # — Column B */}
-      <td className="px-2 py-1 w-16 text-slate-500">
+      <td className="px-3 py-2 w-24 text-slate-500">
         {editing ? (
           <input
             type="text"
@@ -171,7 +195,7 @@ export function TransactionRow({ transaction: tx, isLocked, onSave, onVoid }: Tr
       </td>
 
       {/* Date — Column C */}
-      <td className="px-2 py-1 w-28">
+      <td className="px-3 py-2 w-32">
         {editing ? (
           <input
             type="date"
@@ -189,7 +213,7 @@ export function TransactionRow({ transaction: tx, isLocked, onSave, onVoid }: Tr
       </td>
 
       {/* Description — Column D */}
-      <td className="px-2 py-1 min-w-0 flex-1">
+      <td className="px-3 py-2 min-w-0 flex-1">
         {editing ? (
           <input
             type="text"
@@ -207,28 +231,58 @@ export function TransactionRow({ transaction: tx, isLocked, onSave, onVoid }: Tr
       </td>
 
       {/* Status icon — Column E */}
-      <td className="px-2 py-1 w-10 text-center">
-        <div className="relative group/status">
-          {/* Show auto-triggered scheduled icon hint while typing */}
-          {editing && notesTriggersScheduled ? (
-            <StatusIcon status="scheduled" />
+      <td className="px-3 py-2 w-20 text-center" onClick={(e) => e.stopPropagation()}>
+        <div ref={statusMenuRef} className="relative inline-block">
+          {/* Clickable trigger — always present, even for 'recorded' (no icon) */}
+          {!isLocked && !isVoid ? (
+            <button
+              type="button"
+              onClick={() => setStatusMenuOpen((o) => !o)}
+              className={`
+                flex items-center justify-center w-8 h-8 rounded transition-colors
+                ${statusMenuOpen ? 'bg-slate-200' : 'hover:bg-slate-100'}
+                ${tx.status === 'recorded' && !editing ? 'border border-dashed border-slate-300' : ''}
+              `}
+              title={`Status: ${tx.status} — click to change`}
+            >
+              {editing && notesTriggersScheduled ? (
+                <StatusIcon status="scheduled" className="w-5 h-5" />
+              ) : tx.status === 'recorded' ? (
+                <span className="text-slate-300 text-xs leading-none">○</span>
+              ) : (
+                <StatusIcon status={tx.status} className="w-5 h-5" />
+              )}
+            </button>
           ) : (
-            <StatusIcon status={tx.status} />
+            /* Locked or void — just show the icon, no button */
+            <span className="flex items-center justify-center w-8 h-8">
+              {editing && notesTriggersScheduled ? (
+                <StatusIcon status="scheduled" className="w-5 h-5" />
+              ) : (
+                <StatusIcon status={tx.status} className="w-5 h-5" />
+              )}
+            </span>
           )}
-          {/* Status picker on hover (non-void, non-locked, not editing) */}
-          {!editing && !isLocked && !isVoid && (
-            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-10 hidden group-hover/status:block bg-white shadow-lg rounded border border-slate-200 py-1 min-w-max">
+
+          {/* Dropdown menu — click-triggered, stays open until selection or outside click */}
+          {statusMenuOpen && (
+            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 bg-white shadow-xl rounded-lg border border-slate-200 py-1 min-w-[140px]">
               {STATUS_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
-                  className="flex items-center gap-2 px-3 py-1 w-full text-left text-xs hover:bg-slate-50"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleStatusChange(opt.value)
-                  }}
+                  type="button"
+                  className={`
+                    flex items-center gap-2 px-3 py-2 w-full text-left text-xs transition-colors
+                    hover:bg-slate-50 active:bg-slate-100
+                    ${tx.status === opt.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'}
+                  `}
+                  onClick={() => handleStatusChange(opt.value)}
                 >
-                  <StatusIcon status={opt.value} className="w-4 h-4" />
+                  <StatusIcon status={opt.value} className="w-4 h-4 shrink-0" />
                   {opt.label}
+                  {tx.status === opt.value && (
+                    <span className="ml-auto text-blue-500">✓</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -237,7 +291,7 @@ export function TransactionRow({ transaction: tx, isLocked, onSave, onVoid }: Tr
       </td>
 
       {/* Debit — Column F */}
-      <td className="px-2 py-1 w-28 text-right">
+      <td className="px-3 py-2 w-32 text-right">
         {editing ? (
           <input
             type="text"
@@ -257,7 +311,7 @@ export function TransactionRow({ transaction: tx, isLocked, onSave, onVoid }: Tr
       </td>
 
       {/* Credit — Column G */}
-      <td className="px-2 py-1 w-28 text-right">
+      <td className="px-3 py-2 w-32 text-right">
         {editing ? (
           <input
             type="text"
@@ -277,7 +331,7 @@ export function TransactionRow({ transaction: tx, isLocked, onSave, onVoid }: Tr
       </td>
 
       {/* Balance — Column H (computed, never editable) */}
-      <td className="px-2 py-1 w-32 text-right tabular-nums font-medium">
+      <td className="px-3 py-2 w-36 text-right tabular-nums font-medium">
         {tx.balance != null ? (
           <span style={{ color: tx.balance >= 0 ? '#15803d' : '#b91c1c' }}>
             {formatCurrency(tx.balance)}
@@ -288,7 +342,7 @@ export function TransactionRow({ transaction: tx, isLocked, onSave, onVoid }: Tr
       </td>
 
       {/* Notes — Column I */}
-      <td className="px-2 py-1 w-40">
+      <td className="px-3 py-2 w-44">
         {editing ? (
           <input
             type="text"

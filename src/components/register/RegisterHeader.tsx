@@ -4,6 +4,7 @@
 // Ledger column (right): Actual Balance (heaviest visual weight)
 // ============================================================
 
+import { useState, useEffect } from 'react'
 import { formatCurrency } from '@/lib/balance'
 import type { BalanceSummary, DbRegister } from '@/types'
 
@@ -16,6 +17,81 @@ interface RegisterHeaderProps {
   isLocked: boolean
 }
 
+/** Parse a raw string to a number, stripping $ and commas. Returns null if empty or invalid. */
+function parseBankInput(raw: string): number | null {
+  const stripped = raw.replace(/[$,\s]/g, '')
+  if (stripped === '') return null
+  const n = parseFloat(stripped)
+  return isNaN(n) ? null : Math.round(n * 100) / 100
+}
+
+/** Format a saved number for display. Empty string when null. */
+function displayValue(n: number | null): string {
+  return n != null ? formatCurrency(n) : ''
+}
+
+interface BankFieldProps {
+  label: string
+  savedValue: number | null
+  disabled: boolean
+  onCommit: (value: number | null) => void
+}
+
+function BankField({ label, savedValue, disabled, onCommit }: BankFieldProps) {
+  const [focused, setFocused] = useState(false)
+  // While focused: show raw numeric string for easy editing
+  // While blurred: show formatted currency string
+  const [raw, setRaw] = useState(savedValue != null ? String(savedValue) : '')
+
+  // Sync when the saved value changes externally (e.g. another session or undo)
+  useEffect(() => {
+    if (!focused) {
+      setRaw(savedValue != null ? String(savedValue) : '')
+    }
+  }, [savedValue, focused])
+
+  function handleFocus() {
+    // Strip formatting so the user edits a plain number
+    setRaw(savedValue != null ? String(savedValue) : '')
+    setFocused(true)
+  }
+
+  function handleBlur() {
+    setFocused(false)
+    const parsed = parseBankInput(raw)
+    onCommit(parsed)
+    // Show formatted value immediately after blur
+    setRaw(parsed != null ? String(parsed) : '')
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur()
+    }
+  }
+
+  const displayedValue = focused ? raw : displayValue(savedValue)
+
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-xs text-slate-400">{label}</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        disabled={disabled}
+        value={displayedValue}
+        onChange={(e) => setRaw(e.target.value)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        placeholder="—"
+        className="w-32 text-right text-sm bg-transparent border-b border-slate-600 focus:border-blue-400 outline-none text-white placeholder:text-slate-600 disabled:opacity-40 tabular-nums"
+        aria-label={`Bank ${label.toLowerCase()} balance`}
+      />
+    </div>
+  )
+}
+
 export function RegisterHeader({
   register,
   balances,
@@ -26,15 +102,6 @@ export function RegisterHeader({
 }: RegisterHeaderProps) {
   const { current_balance, available_balance, actual_balance, is_reconciled, unresolved_count, gap } =
     balances
-
-  function handleBankInput(field: 'current' | 'available', raw: string) {
-    const value = raw === '' ? null : parseFloat(raw.replace(/[$,]/g, ''))
-    if (field === 'current') {
-      onBankBalanceUpdate(isNaN(value as number) ? null : value, register.available_bank_bal)
-    } else {
-      onBankBalanceUpdate(register.current_bank_bal, isNaN(value as number) ? null : value)
-    }
-  }
 
   const unresolvedTotal =
     unresolved_count.scheduled + unresolved_count.in_flight + unresolved_count.pending
@@ -52,34 +119,22 @@ export function RegisterHeader({
       {/* Balance columns */}
       <div className="grid grid-cols-2 divide-x divide-slate-700">
         {/* Left: Bank-reported (reconciliation targets) */}
-        <div className="px-4 py-3 space-y-1">
+        <div className="px-4 py-3 space-y-2">
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">
             Bank
           </p>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">Current</span>
-            <input
-              type="text"
-              disabled={isLocked}
-              defaultValue={register.current_bank_bal != null ? String(register.current_bank_bal) : ''}
-              onBlur={(e) => handleBankInput('current', e.target.value)}
-              placeholder="—"
-              className="w-28 text-right text-sm bg-transparent border-b border-slate-600 focus:border-blue-400 outline-none text-white placeholder:text-slate-600 disabled:opacity-40"
-              aria-label="Bank current balance"
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">Available</span>
-            <input
-              type="text"
-              disabled={isLocked}
-              defaultValue={register.available_bank_bal != null ? String(register.available_bank_bal) : ''}
-              onBlur={(e) => handleBankInput('available', e.target.value)}
-              placeholder="—"
-              className="w-28 text-right text-sm bg-transparent border-b border-slate-600 focus:border-blue-400 outline-none text-white placeholder:text-slate-600 disabled:opacity-40"
-              aria-label="Bank available balance"
-            />
-          </div>
+          <BankField
+            label="Current"
+            savedValue={register.current_bank_bal}
+            disabled={isLocked}
+            onCommit={(val) => onBankBalanceUpdate(val, register.available_bank_bal)}
+          />
+          <BankField
+            label="Available"
+            savedValue={register.available_bank_bal}
+            disabled={isLocked}
+            onCommit={(val) => onBankBalanceUpdate(register.current_bank_bal, val)}
+          />
         </div>
 
         {/* Right: Your ledger (source of truth) */}
