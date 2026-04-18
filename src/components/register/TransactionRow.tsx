@@ -280,6 +280,7 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
           {!isLocked && !isVoid ? (
             <button
               type="button"
+              onFocus={handleFocus}
               onClick={() => setStatusMenuOpen((o) => !o)}
               className={`
                 flex items-center justify-center w-8 h-8 rounded transition-colors
@@ -480,6 +481,7 @@ interface NewTransactionRowProps {
     check_number?: number | null
     notes?: string | null
     scheduled_date?: string | null
+    status?: TransactionStatus
   }) => void
 }
 
@@ -501,12 +503,14 @@ export function NewTransactionRow({
 }: NewTransactionRowProps) {
   const [active, setActive] = useState(false)
   const [draft, setDraft] = useState<EditState>(blankDraft)
+  const [draftStatus, setDraftStatus] = useState<TransactionStatus>('recorded')
   const [debitCreditError, setDebitCreditError] = useState(false)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   const rowRef          = useRef<HTMLTableRowElement>(null)
   const dateRef         = useRef<HTMLInputElement>(null)
   const descRef         = useRef<HTMLInputElement>(null)
+  const statusRef       = useRef<HTMLSelectElement>(null)
   const debitRef        = useRef<HTMLInputElement>(null)
   const creditRef       = useRef<HTMLInputElement>(null)
   const notesRef        = useRef<HTMLInputElement>(null)
@@ -526,22 +530,27 @@ export function NewTransactionRow({
     )
   }
 
-  // Save-and-continue: reset draft, keep row open, scroll into view, re-focus Date.
-  // scrollIntoView('center') ensures the row is never right at the bottom of the
-  // viewport when the user starts typing — gives the dropdown room to open downward.
+  // Save-and-continue: reset draft, keep row open, re-focus Date, then scroll.
+  // Focus runs first so the browser's built-in focus-scroll (block: nearest) fires,
+  // then requestAnimationFrame scrolls to center — after React's commit and the
+  // browser's layout pass — so our scroll always wins over the browser's default.
   function resetAndContinue() {
     setDraft(blankDraft())
+    setDraftStatus('recorded')
     setDebitCreditError(false)
     setConfirmDiscard(false)
     setTimeout(() => {
-      rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       dateRef.current?.focus()
+      requestAnimationFrame(() => {
+        rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
     }, 0)
   }
 
   function deactivate() {
     setActive(false)
     setDraft(blankDraft())
+    setDraftStatus('recorded')
     setDebitCreditError(false)
     setConfirmDiscard(false)
   }
@@ -549,8 +558,10 @@ export function NewTransactionRow({
   function activate() {
     setActive(true)
     setTimeout(() => {
-      rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       dateRef.current?.focus()
+      requestAnimationFrame(() => {
+        rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
     }, 0)
   }
 
@@ -575,6 +586,7 @@ export function NewTransactionRow({
       check_number: draft.check_number ? parseInt(draft.check_number, 10) : null,
       notes: (notesVal ?? '').trim() || null,
       scheduled_date: draft.scheduled_date || null,
+      status: draftStatus,
     })
     invalidateSuggestionCache(accountId)
     resetAndContinue()
@@ -698,19 +710,13 @@ export function NewTransactionRow({
             commonKeys(e)
             if (e.key === 'Tab' && !e.shiftKey) {
               e.preventDefault()
-              if (draft.credit !== '') notesRef.current?.focus()
-              else debitRef.current?.focus()
+              statusRef.current?.focus()
             }
           }}
           suggestions={descSuggestions}
           onAccept={(val) => {
             setDraft((d) => ({ ...d, description: val }))
-            // Advance focus same as Tab — capture credit state from current render
-            const skipDebit = draft.credit !== ''
-            setTimeout(() => {
-              if (skipDebit) notesRef.current?.focus()
-              else debitRef.current?.focus()
-            }, 0)
+            setTimeout(() => statusRef.current?.focus(), 0)
           }}
           className={`${base} border-slate-200 text-sm px-2`}
           placeholder="Description *"
@@ -718,8 +724,32 @@ export function NewTransactionRow({
         />
       </td>
 
-      {/* Status — excluded from tab order */}
-      <td className="px-2 py-1.5 w-10 text-center text-slate-300 text-xs" tabIndex={-1}>—</td>
+      {/* Status — included in Tab order between Description and Debit */}
+      <td className="px-2 py-1.5 w-20">
+        <select
+          ref={statusRef}
+          value={draftStatus}
+          onChange={(e) => setDraftStatus(e.target.value as TransactionStatus)}
+          onKeyDown={(e) => {
+            if (e.key === 'Tab' && !e.shiftKey) {
+              e.preventDefault()
+              if (draft.credit !== '') notesRef.current?.focus()
+              else debitRef.current?.focus()
+            } else if (e.key === 'Escape') {
+              e.preventDefault()
+              handleEscape()
+            } else if (e.key === 'Enter') {
+              e.preventDefault()
+              handleSubmit()
+            }
+          }}
+          className={`${base} border-slate-200 ${draftStatus === 'recorded' ? 'text-slate-400' : 'text-slate-700'}`}
+        >
+          <option value="recorded">Recorded</option>
+          <option value="pending">Pending</option>
+          <option value="cleared">Cleared</option>
+        </select>
+      </td>
 
       {/* Debit — smart Tab: skip Credit if Debit has a value */}
       <td className="px-2 py-1.5 w-28">

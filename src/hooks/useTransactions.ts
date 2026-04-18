@@ -72,9 +72,10 @@ export function useAddTransaction() {
       check_number?: number | null
       notes?: string | null
       scheduled_date?: string | null
+      status?: TransactionStatus
     }): Promise<DbTransaction> => {
       const scheduledDate = payload.scheduled_date ?? null
-      let status: TransactionStatus = 'recorded'
+      let status: TransactionStatus = payload.status ?? 'recorded'
       if (scheduledDate) {
         status = isInFlight(scheduledDate) ? 'in_flight' : 'scheduled'
       }

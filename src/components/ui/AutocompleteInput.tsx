@@ -162,6 +162,7 @@ export const AutocompleteInput = forwardRef<HTMLInputElement, AutocompleteInputP
           ref={ref}
           value={value}
           onKeyDown={handleKeyDown}
+          onBlur={() => { setIsOpen(false); setActiveIdx(-1) }}
           className={className}
           {...rest}
         />

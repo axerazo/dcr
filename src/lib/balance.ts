@@ -106,31 +106,6 @@ export function computeClosingBalance(
 }
 
 /**
- * @deprecated DO NOT USE — scheduled_date column is now the single source of truth.
- * Kept only for backwards compatibility during migration. Will be removed.
- */
-export function detectScheduledPhrase(notes: string | null | undefined): boolean {
-  if (!notes) return false
-  return /scheduled to be paid on/i.test(notes)
-}
-
-/**
- * @deprecated DO NOT USE — scheduled_date column is now the single source of truth.
- * Kept only for backwards compatibility during migration. Will be removed.
- */
-export function parseScheduledDate(notes: string | null | undefined): string | null {
-  if (!notes) return null
-  const match = notes.match(/scheduled to be paid on\s+(\d{1,2}\/\d{1,2}\/\d{4})/i)
-  if (!match?.[1]) return null
-  const [month, day, year] = match[1].split('/')
-  if (!month || !day || !year) return null
-  const iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return null
-  return iso
-}
-
-/**
  * Determine if a scheduled transaction has become in-flight.
  * In-flight = scheduled_date < today (the day after the scheduled date has passed).
  */
