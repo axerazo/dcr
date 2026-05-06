@@ -27,6 +27,7 @@
 18. [Bank Sync (Optional — v2)](#18-bank-sync-optional--v2)
 19. [Tech Stack Recommendation](#19-tech-stack-recommendation)
 20. [Build Phases](#20-build-phases)
+21. [Statement-Level Reconciliation (Phase 4)](#21-statement-level-reconciliation-phase-4)
 
 ---
 
@@ -435,27 +436,45 @@ Every register has a `month_status` field that tracks its lifecycle:
 - `soft_closed` → `hard_closed`: automatic when the next sequential month transitions to `soft_closed`
 - `hard_closed` → editable session: existing unlock dialog + full audit log (existing flow, preserved)
 
+> **Phase 4 forward reference:** Phase 4 will introduce a `statement-reconciled` verification marker that sits between `soft_closed` and `hard_closed`. This is not a separate `month_status` value — it is an optional verification step applied after soft-close, stored as metadata on the register row. See §21 for details.
+
 ### Month Register Creation
 
-Month registers are **user-created entities** — the system does not preemptively create future-month registers based on calendar rollover. A register for a given month comes into existence only when the user navigates to that month tab for the first time and confirms initialization.
+> **NOTE: Auto-carry behavior described below is the intended design and is not yet implemented as of this spec revision. Current implementation always shows the Initialize modal when a register does not exist. Implementation of the described auto-carry behavior is planned — see §20 for build phase placement.**
 
-Two creation paths exist:
+Month registers are created by two mechanisms: **system auto-carry** (for the current calendar month, silent) and the **Initialize modal** (all other cases).
 
-**Path 1 — Calendar-natural:** The user creates a register on or after that month has begun (the prior month is in the past). Opening balance is auto-populated from the prior month's last cleared running balance using the formula below. No manual entry required.
+**Auto-carry — current month:**  
+When the user accesses the app (login, page load, or any navigation event) and the current calendar month has no register, the system checks for a prior-month register. If one exists, the system silently auto-creates the current month register before any UI renders. Opening balance is the most recent prior month's last-cleared running balance, computed at carry time. The user sees the new register ready to use — no Initialize modal, no toast, no notification.
 
-**Path 2 — Early creation:** The user creates a register before that month has begun (e.g., creating May while April is still active). Because the prior month has not yet closed out, the system cannot reliably derive a final opening balance automatically. The Initialize modal prompts the user to enter a manual opening balance — typically the current Actual Balance shown in the prior month at that moment.
+"Most recent prior month" means the most recent existing register in the past, not necessarily the immediately prior calendar month. Gaps are allowed.
 
-Both paths produce a register with a valid opening balance, ready for entries. Regardless of which path was used, the carry-forward update rule below governs all subsequent silent opening balance changes.
+Auto-carry never fires for a month that already has a register.
+
+**January — year boundary:**  
+January registers always require manual entry via the Initialize modal, regardless of December's state. January marks the fiscal year boundary; the user must explicitly establish the opening balance.
+
+**When the Initialize modal appears:**
+- Creating a January register
+- Creating a register for a future calendar month (pre-entry scenario; the calendar has not yet reached that month's first day)
+- Creating the very first register for an account, where no prior month exists to carry from
+- Creating a register for a past month where no auto-carry source exists (backfill scenario)
+
+In all other cases, auto-carry fires automatically.
+
+**Early creation — future months:**  
+A user may navigate to a future month tab before that month begins (e.g., creating May on April 25) to pre-enter known scheduled items. The Initialize modal appears and prompts for a manual opening balance — typically the current Actual Balance from the prior month. That manual value is permanent at creation time. Auto-carry never fires for a month that already has a register.
 
 ### Opening Balance Carry-Forward Rule (Revised)
 
-Next month's `opening_balance` = the running balance at the last **cleared** transaction in the prior month, computed by iterating transactions in `row_order` sequence. Running balance includes all non-void transactions; the "snapshot" is recorded each time a cleared transaction is encountered.
+Opening balance formula: `opening_balance = most recent prior month's last-cleared running balance`. This is the running balance at the last `cleared` transaction in `row_order` sequence; the running balance includes all non-void transactions and the "snapshot" is recorded each time a cleared transaction is encountered.
 
-This updates **silently** (no prompt) whenever any transaction in the prior month changes status. Guards:
-- Never updates a locked (`is_locked = true`) next month
-- Never updates when the source month is `soft_closed` or `hard_closed`
+For auto-carry, this formula determines the opening balance at the moment the register is created. For manually initialized registers (Initialize modal), the user-entered value is used at creation time.
 
-For Path 1 (calendar-natural), this formula also determines the opening balance at the moment the register is created. For Path 2 (early creation), the Initialize modal value is used at creation time and this formula governs only subsequent silent updates.
+Once a register exists — whether created by auto-carry or Initialize modal — changes to the prior month's last-cleared running balance silently update that register's opening balance (no prompt). Propagation:
+- Applies regardless of the prior month's archive state. A month that has been reopened and re-modified updates the next month's opening balance — and any subsequent months that carry from it — through the chain.
+- Is cascading: because each month's closing balance becomes the next month's opening balance, a change in any prior month ripples forward through all subsequent months. This is mathematically correct ledger behavior.
+- **Never** updates a next month whose `is_locked = true`.
 
 ### Close & Archive Flow
 
@@ -721,7 +740,11 @@ year                INTEGER NOT NULL
 opening_balance     NUMERIC(12,2) NOT NULL DEFAULT 0.00
 current_bank_bal    NUMERIC(12,2)  -- user-entered during reconciliation
 available_bank_bal  NUMERIC(12,2)  -- user-entered during reconciliation
-is_locked           BOOLEAN DEFAULT false
+is_locked           BOOLEAN DEFAULT false NOT NULL
+is_manual_opening   BOOLEAN DEFAULT false NOT NULL  -- true = user entered via Initialize modal; false = auto-carried from prior month
+month_status        TEXT NOT NULL DEFAULT 'open'
+                    CHECK (month_status IN ('open', 'ready_to_close', 'soft_closed', 'hard_closed'))
+last_closed_type    TEXT CHECK (last_closed_type IN ('soft', 'hard'))  -- null = never closed; 'soft' = most recently soft_closed; 'hard' = most recently hard_closed
 created_at          TIMESTAMPTZ DEFAULT now()
 updated_at          TIMESTAMPTZ DEFAULT now()
 UNIQUE (account_id, month, year)
@@ -762,7 +785,7 @@ user_id         UUID REFERENCES users(id) NOT NULL
 account_id      UUID REFERENCES accounts(id) NOT NULL
 register_id     UUID REFERENCES registers(id)
 transaction_id  UUID REFERENCES transactions(id)
-action          TEXT NOT NULL  -- unlocked | edited | voided | re-locked | status_changed | ai_suggestion_accepted
+action          TEXT NOT NULL  -- unlocked | re-locked | opening_balance_updated | opening_balance_mismatch_kept | month_soft_closed | month_hard_closed | reconciliation_session_started | reconciliation_session_completed | ai_suggestion_accepted | ai_suggestion_ignored
 field_changed   TEXT
 value_before    TEXT
 value_after     TEXT
@@ -1009,7 +1032,7 @@ Bank sync is an **optional enhancement** for reconciliation assistance. It is no
 - Column definitions B–I fully implemented
 - Three balance computations (Current / Available / Actual)
 - Status system (recorded / scheduled / pending / cleared / void)
-- Scheduled auto-trigger from Notes/Memos
+- Scheduled auto-trigger from `scheduled_date` (Column J)
 - Mutual exclusivity rule (debit/credit)
 - Running balance computation (never stored)
 - Monthly carry-forward (normalized single rule)
@@ -1035,13 +1058,113 @@ Bank sync is an **optional enhancement** for reconciliation assistance. It is no
 - Unmatched transaction flagging
 - Sync status indicator
 
-### Phase 4 — Polish & Export
+### Phase 4 — Polish, Export & Statement Reconciliation
 - CSV export (per month, per year)
 - PDF export (register view)
 - Account settings (routing/account number management)
 - Audit log viewer (user-facing)
 - Performance optimization
 - Accessibility audit (WCAG 2.1 AA)
+- Statement-level reconciliation (see §21): manual statement balance entry, period-end balance comparison, reconciliation event persistence, discrepancy surfacing
+- Auto-carry on month rollover: silently auto-create the current month register from prior month's last-cleared balance on app access; Initialize modal suppressed when auto-carry applies (see §11)
+
+---
+
+## 21. Statement-Level Reconciliation (Phase 4)
+
+### Purpose and Scope
+
+The existing reconciliation system (§13, §14) operates at the **transaction level**: it matches individual transactions between the user's ledger and the bank's reported activity and drives status updates (`pending` → `cleared`). This keeps the register current but cannot definitively verify that the register's closing balance for a period equals the bank's own period-end statement balance. Statement-level reconciliation closes that gap by comparing two frozen, period-end snapshots — the register's computed closing balance and the bank's issued statement ending balance — where the math must agree exactly.
+
+### Two-Tier Reconciliation Model
+
+| Tier | Scope | When | Data source | Balance comparison |
+|---|---|---|---|---|
+| **Daily (transaction-level)** | Individual transactions | Continuously; driven by user | Bank's live data via Plaid (Phase 3) or manual | Not performed — bank-internal pending timing and "available balance" calculations introduce noise that produces false discrepancies |
+| **Monthly (statement-level)** | Period-end closing balance | After bank issues monthly statement (typically 5–10 days after month-end) | Bank-issued statement (manual entry or CSV import) | Performed — both sides are frozen snapshots of the same period; math must agree exactly |
+
+**Why both tiers are necessary:**
+- Daily reconciliation keeps the register current as activity happens but cannot rigorously verify balance correctness because of bank-internal timing.
+- Statement reconciliation provides definitive period-end verification but is only possible once the bank issues the monthly statement.
+- Together they deliver both **currency** (daily accuracy) and **rigor** (monthly proof).
+
+### Statement Reconciliation Workflow
+
+1. User receives the bank's monthly statement (PDF, CSV, or just the ending balance number) — typically 5–10 days after month-end.
+2. User navigates to the relevant past month's register.
+3. User opens the "Reconcile Statement" affordance (button, modal, or settings panel — specific UI design TBD for Phase 4 implementation).
+4. User enters the bank statement's **ending balance** for that month.
+5. System computes the register's closing balance for the same month using the existing Formula C / closing-balance logic (§9).
+6. System compares the two values:
+   - **Match (difference = $0.00):** Month is marked `statement-reconciled`. A reconciliation event is recorded with timestamp, the statement balance entered, and the computed register balance.
+   - **Mismatch:** System surfaces the discrepancy amount. Optionally, the AI layer (§14) may be invoked to help identify transactions present on one side but not the other. Resolution paths: (a) finding a missing or extra transaction, (b) correcting a status mistake, or (c) escalating to the bank (rare bank error). Discrepancy is not resolved automatically — user action required in all cases.
+7. Reconciliation events are persistent and visible in audit history.
+
+### State Machine Integration
+
+The `statement-reconciled` marker sits **between `soft_closed` and `hard_closed`** in the month lifecycle:
+
+```
+[soft_closed]
+  → (user enters statement balance; amounts match)
+[statement-reconciled marker applied — registers.statement_reconciled_at set]
+  → (next sequential month transitions to soft_closed)
+[hard_closed]
+```
+
+This aligns with real-world banking rhythm: a month soft-closes when all transactions clear, the bank statement arrives a few days later, the user reconciles it then, and hard-close occurs when the next month also soft-closes.
+
+**Important:** `statement-reconciled` is a **verification marker**, not a separate `month_status` enum value. It is stored as metadata on the `registers` row (`statement_reconciled_at TIMESTAMPTZ`, `statement_balance_entered NUMERIC(12,2)`) and does not modify the existing `month_status` state machine.
+
+**DEFERRED DESIGN DECISION — Required vs. optional before hard-close:**
+
+| Option | Trade-off |
+|---|---|
+| **Required** | Higher rigor; enforces good discipline; but blocks hard-close if user delays statement reconciliation |
+| **Optional** | Flexible; but lets users skip the verification step entirely |
+| **Optional with strong UI nudge** | Encouraged but not blocking — likely the right answer |
+
+This decision is deferred to Phase 4 implementation, to be informed by user testing.
+
+### Data Sources for Statement Balance
+
+| Source | Availability | Notes |
+|---|---|---|
+| **Manual entry** | Always (Phase 4) | User types the statement's ending balance. Minimum viable form of this feature. |
+| **CSV import** | Phase 4 | If user imports a bank statement CSV, the ending balance can be parsed automatically. |
+| **Plaid** | Not applicable | Plaid provides transaction lists and current balances — it does not surface bank-issued statement balances as a first-class data source. Statements are bank-issued artifacts, not Plaid concepts. Plaid data serves daily (transaction-level) reconciliation; it does not substitute for statement-level reconciliation. |
+
+### Relationship to Existing Phase 2 Reconciliation
+
+The Phase 2 AI reconciliation system (§13, §14) — the "Reconcile" button, gap analysis, and suggestion flow — is **unchanged**. It serves transaction-level reconciliation and continues to do that job.
+
+Statement-level reconciliation is **additive**: a second verification step applied after a month soft-closes. It does not replace, modify, or interact with the Phase 2 reconciliation panel.
+
+The AI layer (§14) may optionally be extended to help explain statement-level discrepancies (e.g., identifying transactions on one side but not the other). This is an enhancement, not a core requirement.
+
+### Persistence — Reconciliation Events
+
+Statement reconciliation events are stored as structured, append-only records associated with a `register_id`, consistent with the audit log principle (§12).
+
+```
+statement_reconciliation_events table:
+  id:                        UUID          auto-generated, primary key
+  register_id:               UUID          foreign key → registers
+  user_id:                   UUID          foreign key → users
+  statement_balance:         NUMERIC(12,2) balance entered by user
+  computed_register_balance: NUMERIC(12,2) register closing balance at time of event
+  discrepancy:               NUMERIC(12,2) statement_balance − computed_register_balance
+  status:                    Enum          'matched' | 'discrepancy'
+  resolved_at:               TIMESTAMPTZ?  set when a discrepancy is subsequently resolved
+  notes:                     TEXT?         optional user note
+  timestamp:                 TIMESTAMPTZ   server-side, immutable
+```
+
+The `registers` table gains two columns to support this feature:
+```sql
+statement_reconciled_at    TIMESTAMPTZ   -- null if not yet statement-reconciled
+statement_balance_entered  NUMERIC(12,2) -- the balance entered at reconciliation time
+```
 
 ---
 
