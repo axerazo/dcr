@@ -103,5 +103,4 @@ README.md            This file
 This project is built collaboratively with Claude as an implementation partner. Design and review happen in conversation; Claude Code handles implementation. SPEC.md serves as the synchronization point between design sessions and implementation sessions, and as a living document of architectural decisions and their rationale.
 
 ## License
-
-[Choose one — MIT recommended for personal projects, or omit this section if you intend to keep it private.]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
