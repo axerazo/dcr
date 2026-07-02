@@ -3,12 +3,12 @@
     "allow": [
       "Bash(npm create:*)",
       "Bash(npx create-vite@latest . --template react-ts --force)",
-      "Bash(npx create-vite@latest pfm-app --template react-ts)",
+      "Bash(npx create-vite@latest dcr-app --template react-ts)",
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
       "Bash(npm run:*)",
       "Skill(claude-api)",
-      "Bash(ls /c/workspace/pfm/.env*)",
+      "Bash(ls /c/workspace/dcr/.env*)",
       "Bash(node:*)",
       "Bash(npx vite:*)"
     ]
