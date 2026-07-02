@@ -1,4 +1,4 @@
-# Digital Check Register
+# Digital Check Register ![CI](https://github.com/axerazo/dcr/actions/workflows/ci.yml/badge.svg)
 
 **Summary:** A personal project demonstrating ledger-first design, AI-assisted reconciliation, and human-in-the-loop AI engineering. Built collaboratively with Claude Code.
 
