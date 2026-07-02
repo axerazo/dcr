@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 // ============================================================
 // useTransactions — CRUD for transactions within a register
 // ============================================================
@@ -99,7 +98,7 @@ export function useUpdateTransaction() {
   return useMutation({
     mutationFn: async ({
       id,
-      register_id,
+      register_id: _register_id,
       currentStatus,
       ...updates
     }: Partial<DbTransaction> & {

@@ -193,6 +193,7 @@ export function RegisterView({ account }: RegisterViewProps) {
       opening_balance: lastClearedBalance,
       is_manual_opening: false,
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     lastClearedBalance,
     nextMonthReg?.id,
@@ -221,6 +222,7 @@ export function RegisterView({ account }: RegisterViewProps) {
     } else if (!cleared && status === 'ready_to_close') {
       updateRegister.mutate({ id: register.id, month_status: 'open' })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transactions, register?.month_status, register?.id, register?.last_closed_type])
 
   // Reset close-prompt state when month status changes (e.g. ready_to_close → open)
@@ -257,6 +259,7 @@ export function RegisterView({ account }: RegisterViewProps) {
     // Corrupt state detected — auto-correct
     setWasCorrupted(true)
     updateRegister.mutate({ id: register.id, month_status: 'open', is_locked: false })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [register?.id, register?.month_status, unclearedCount])
 
   // --- Stale soft_closed auto-correction ---
@@ -281,6 +284,7 @@ export function RegisterView({ account }: RegisterViewProps) {
       value_before: 'soft_closed',
       value_after: 'hard_closed',
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [register?.id, register?.month_status, nextMonthReg?.month_status])
 
   // --- Lock state ---
