@@ -122,9 +122,6 @@ export function isInFlight(scheduledDate: string | null | undefined): boolean {
 }
 
 // Floating-point equality for currency (cents-level precision)
-function floatEq(a: number, b: number): boolean {
-  return Math.abs(a - b) < 0.001
-}
 
 /** Exported currency equality — half-cent tolerance for carry-forward comparisons. */
 export function currencyEq(a: number, b: number): boolean {

@@ -5,7 +5,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { RECONCILIATION_SYSTEM_PROMPT } from './systemPrompt'
-import type { ReconciliationContext, ReconciliationResult, ReconciliationParseError as ParseErrorType } from '@/types/reconciliation'
+import type { ReconciliationContext, ReconciliationResult } from '@/types/reconciliation'
 import { ReconciliationParseError } from '@/types/reconciliation'
 
 const TIMEOUT_MS = 30_000
