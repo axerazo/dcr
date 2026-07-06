@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scenario": "seed_happy_path",
+  "source": "fabricated",
+  "description": "Single fully-reconciled month, all cleared. Exercises the convergence invariant: current = available = actual = closing.",
+  "months": [
+    {
+      "label": "2026-04",
+      "opening_balance": 2500.0,
+      "opening_source": "manual",
+      "transactions": [
+        { "row_order": 1, "date": "2026-04-02", "description": "Utility payment", "status": "cleared", "debit": 45.12, "credit": null },
+        { "row_order": 2, "date": "2026-04-05", "description": "Payroll deposit", "status": "cleared", "debit": null, "credit": 1200.0 },
+        { "row_order": 3, "date": "2026-04-11", "description": "Rent share", "status": "cleared", "debit": 300.25, "credit": null },
+        { "row_order": 4, "date": "2026-04-20", "description": "Streaming service", "status": "cleared", "debit": 19.99, "credit": null }
+      ],
+      "expected": {
+        "running_balances": [2454.88, 3654.88, 3354.63, 3334.64],
+        "current_balance": 3334.64,
+        "available_balance": 3334.64,
+        "actual_balance": 3334.64,
+        "closing_balance": 3334.64,
+        "is_reconciled": true,
+        "available_source": "hand"
+      }
+    }
+  ]
+}

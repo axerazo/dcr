@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "scenario": "seed_chain_3mo",
+  "source": "fabricated",
+  "description": "Three-month carry-forward chain with a void row, a no-amount memo row, a negative running-balance dip, and all six statuses represented. Final month fully reconciled to assert end-of-chain convergence.",
+  "months": [
+    {
+      "label": "2026-01",
+      "opening_balance": 1500.0,
+      "opening_source": "manual",
+      "transactions": [
+        { "row_order": 1, "date": "2026-01-03", "description": "Groceries", "status": "cleared", "debit": 200.0, "credit": null },
+        { "row_order": 2, "date": "2026-01-07", "description": "Check 101 — entered in error", "status": "void", "debit": 75.0, "credit": null, "check_number": 101 },
+        { "row_order": 3, "date": "2026-01-12", "description": "Consulting income", "status": "cleared", "debit": null, "credit": 450.5 },
+        { "row_order": 4, "date": "2026-01-15", "description": "Memo: called bank re: hold", "status": "recorded", "debit": null, "credit": null },
+        { "row_order": 5, "date": "2026-01-28", "description": "Bank fee", "status": "cleared", "debit": 0.5, "credit": null }
+      ],
+      "expected": {
+        "running_balances": [1300.0, null, 1750.5, null, 1750.0],
+        "current_balance": 1750.0,
+        "available_balance": 1750.0,
+        "actual_balance": 1750.0,
+        "closing_balance": 1750.0,
+        "is_reconciled": false,
+        "available_source": "hand"
+      }
+    },
+    {
+      "label": "2026-02",
+      "opening_balance": 1750.0,
+      "opening_source": "carry",
+      "transactions": [
+        { "row_order": 1, "date": "2026-02-01", "description": "Payroll deposit", "status": "cleared", "debit": null, "credit": 2000.0 },
+        { "row_order": 2, "date": "2026-02-03", "description": "Mortgage", "status": "cleared", "debit": 3600.0, "credit": null },
+        { "row_order": 3, "date": "2026-02-10", "description": "Insurance premium", "status": "pending", "debit": 300.0, "credit": null },
+        { "row_order": 4, "date": "2026-02-14", "description": "Tax refund", "status": "cleared", "debit": null, "credit": 500.0 },
+        { "row_order": 5, "date": "2026-02-20", "description": "Check 102", "status": "in_flight", "debit": 25.25, "credit": null, "check_number": 102 },
+        { "row_order": 6, "date": "2026-02-27", "description": "Scheduled donation", "status": "scheduled", "debit": 10.0, "credit": null }
+      ],
+      "expected": {
+        "running_balances": [3750.0, 150.0, -150.0, 350.0, 324.75, 314.75],
+        "current_balance": 314.75,
+        "available_balance": 650.0,
+        "actual_balance": 314.75,
+        "closing_balance": 314.75,
+        "is_reconciled": false,
+        "available_source": "hand"
+      }
+    },
+    {
+      "label": "2026-03",
+      "opening_balance": 314.75,
+      "opening_source": "carry",
+      "transactions": [
+        { "row_order": 1, "date": "2026-03-02", "description": "Payroll deposit", "status": "cleared", "debit": null, "credit": 1000.0 },
+        { "row_order": 2, "date": "2026-03-09", "description": "Pharmacy", "status": "cleared", "debit": 14.75, "credit": null }
+      ],
+      "expected": {
+        "running_balances": [1314.75, 1300.0],
+        "current_balance": 1300.0,
+        "available_balance": 1300.0,
+        "actual_balance": 1300.0,
+        "closing_balance": 1300.0,
+        "is_reconciled": true,
+        "available_source": "hand"
+      }
+    }
+  ],
+  "expected_chain": {
+    "carry_forwards": [1750.0, 314.75]
+  }
+}

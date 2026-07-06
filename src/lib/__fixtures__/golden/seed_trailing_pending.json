@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scenario": "seed_trailing_pending",
+  "source": "fabricated",
+  "description": "Month ending with pending stragglers — the exact case where the last-row carry-forward rule (oracle) diverges from the legacy last-cleared rule. Mirrors the July 2026 workbook verification scenario.",
+  "months": [
+    {
+      "label": "2026-07",
+      "opening_balance": 1000.0,
+      "opening_source": "manual",
+      "transactions": [
+        { "row_order": 1, "date": "2026-07-05", "description": "Electric bill", "status": "cleared", "debit": 100.0, "credit": null },
+        { "row_order": 2, "date": "2026-07-05", "description": "Check 204", "status": "pending", "debit": 50.0, "credit": null, "check_number": 204 },
+        { "row_order": 3, "date": "2026-07-05", "description": "Refund", "status": "cleared", "debit": null, "credit": 20.0 },
+        { "row_order": 4, "date": "2026-07-06", "description": "Card purchase", "status": "pending", "debit": 30.0, "credit": null }
+      ],
+      "expected": {
+        "running_balances": [900.0, 850.0, 870.0, 840.0],
+        "current_balance": 840.0,
+        "available_balance": 920.0,
+        "actual_balance": 840.0,
+        "closing_balance": 840.0,
+        "is_reconciled": false,
+        "available_source": "hand"
+      }
+    }
+  ]
+}
