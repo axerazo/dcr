@@ -128,7 +128,7 @@ Users can manage one or more bank accounts. Each account has its own independent
 - Navigation: previous/next month arrows + month tab bar (January–December + Yearly Summary)
 
 ### Opening Balance
-- January of each year: user sets the opening balance manually (once, at account creation or year start)
+- First-ever register of an account: user sets the opening balance manually (once); every later month — including January across year boundaries — auto-carries from the most recent prior month
 - February–December: opening balance = prior month's closing balance — **read-only, auto-carried, never editable**
 - Opening balance is stored as `register.opening_balance`
 
@@ -316,8 +316,9 @@ Rules:
 current_month.opening_balance = prior_month.last_transaction_row.balance
 ```
 One rule. Every month. No exceptions.  
-January: opening balance set manually by user at account/year initialization  
-February–December: opening balance = prior month closing balance, read-only, auto-carried
+The "last transaction row" is the last **amount-bearing, non-void** row in `row_order` sequence — **status-blind** (Formula E's value therefore always equals Formula C, at every moment, not only at close). Confirmed empirically 2026-07 against the Excel oracle: the workbook's carry formula `LOOKUP(9.99E+307, PRIOR!$H:$H)` takes the last numeric balance regardless of cleared state, and the H-column balance formula contains no status term. At month close (all non-void rows cleared) this value converges with the last-cleared running balance.  
+First-ever register: opening balance set manually by user at account initialization  
+All subsequent months (including January across year boundaries): opening balance = prior month closing balance, auto-carried, live-updating until the prior month is archived
 
 ---
 
@@ -384,6 +385,8 @@ Audit entry created for every status transition
 - Cannot be permanently deleted — void is the final deletable state
 - Audit entry created
 
+**Scope (added 2026-07):** void marks entries where money never moved at the bank — data-entry errors, duplicate entries, checks lost or destroyed before presentment, holds that never posted. Money that moved and was returned is NOT voided: charge and refund are recorded as two separate transactions (append-only ledger, matching bank records one-to-one). Void is the app-native replacement for deleting an erroneous row — the record shows what transpired, including the mistake — and gives the AI reconciler a clean semantic: a void row is expected to match nothing on the bank side.
+
 ---
 
 ## 11. Monthly Register Rules
@@ -444,34 +447,32 @@ Every register has a `month_status` field that tracks its lifecycle:
 
 Month registers are created by two mechanisms: **system auto-carry** (for the current calendar month, silent) and the **Initialize modal** (all other cases).
 
-**Auto-carry — current month:**  
-When the user accesses the app (login, page load, or any navigation event) and the current calendar month has no register, the system checks for a prior-month register. If one exists, the system silently auto-creates the current month register before any UI renders. Opening balance is the most recent prior month's last-cleared running balance, computed at carry time. The user sees the new register ready to use — no Initialize modal, no toast, no notification.
+**Auto-carry:**  
+When the user navigates to (or the app opens on) any month that has no register, the system checks for a prior register. If one exists, the system silently auto-creates the viewed month's register. Opening balance is the most recent prior month's closing balance (Formula C/E — last amount-bearing non-void row, status-blind), computed at carry time and created with `is_manual_opening = false` so silent carry-forward keeps it live thereafter. The user sees the new register ready to use — no Initialize modal, no toast, no notification. This matches the Excel oracle, where every month tab's "Previous Balance" formula exists from the start and tracks the prior tab live.
 
 "Most recent prior month" means the most recent existing register in the past, not necessarily the immediately prior calendar month. Gaps are allowed.
 
 Auto-carry never fires for a month that already has a register.
 
-**January — year boundary:**  
-January registers always require manual entry via the Initialize modal, regardless of December's state. January marks the fiscal year boundary; the user must explicitly establish the opening balance.
+**January — year boundary (revised 2026-07):**  
+January auto-carries from December like any other month. The manual year-boundary copy step was an Excel artifact — separate annual files forced it; the app's data is continuous, so no manual step exists. Manual entry applies only to the first-ever register of an account.
 
 **When the Initialize modal appears:**
-- Creating a January register
-- Creating a register for a future calendar month (pre-entry scenario; the calendar has not yet reached that month's first day)
-- Creating the very first register for an account, where no prior month exists to carry from
-- Creating a register for a past month where no auto-carry source exists (backfill scenario)
+- Creating the very first register for an account, where no prior register exists to carry from
+- Creating a register for a month earlier than the first existing register (backfill scenario — no auto-carry source exists in the past)
 
 In all other cases, auto-carry fires automatically.
 
-**Early creation — future months:**  
-A user may navigate to a future month tab before that month begins (e.g., creating May on April 25) to pre-enter known scheduled items. The Initialize modal appears and prompts for a manual opening balance — typically the current Actual Balance from the prior month. That manual value is permanent at creation time. Auto-carry never fires for a month that already has a register.
+**Early creation — future months (revised 2026-07):**  
+A user may navigate to a future month tab before that month begins (e.g., opening May on April 25) to pre-enter known scheduled items. Auto-carry fires: May is created from April's closing balance and — because it is created with `is_manual_opening = false` — its opening stays live as April continues to change, exactly like the Excel formula. The previous rule (Initialize modal with a permanent manual value) produced a frozen snapshot that immediately drifted from reality and forced the mismatch prompt; it is retired. Auto-carry never fires for a month that already has a register.
 
-### Opening Balance Carry-Forward Rule (Revised)
+### Opening Balance Carry-Forward Rule (Revised 2026-07 — oracle rule)
 
-Opening balance formula: `opening_balance = most recent prior month's last-cleared running balance`. This is the running balance at the last `cleared` transaction in `row_order` sequence; the running balance includes all non-void transactions and the "snapshot" is recorded each time a cleared transaction is encountered.
+Opening balance formula: `opening_balance = most recent prior month's closing balance` (Formula C/E) — the running balance at the last **amount-bearing, non-void** row in `row_order` sequence, **status-blind**. The former "last-cleared running balance" rule is retired: differential validation against the Excel oracle showed the workbook's carry has never considered status, and the last-row rule is also financially safer during the month-overlap period (trailing pending debits are committed obligations and belong in the next month's opening).
 
-For auto-carry, this formula determines the opening balance at the moment the register is created. For manually initialized registers (Initialize modal), the user-entered value is used at creation time.
+For auto-carry, this formula determines the opening balance at the moment the register is created. For manually initialized registers (Initialize modal — first-ever register only), the user-entered value is used at creation time.
 
-Once a register exists — whether created by auto-carry or Initialize modal — changes to the prior month's last-cleared running balance silently update that register's opening balance (no prompt). Propagation:
+Once a register exists — whether created by auto-carry or Initialize modal — changes to the prior month's closing balance silently update that register's opening balance (no prompt). Propagation:
 - Applies regardless of the prior month's archive state. A month that has been reopened and re-modified updates the next month's opening balance — and any subsequent months that carry from it — through the chain.
 - Is cascading: because each month's closing balance becomes the next month's opening balance, a change in any prior month ripples forward through all subsequent months. This is mathematically correct ledger behavior.
 - **Never** updates a next month whose `is_locked = true`.
@@ -1066,7 +1067,7 @@ Bank sync is an **optional enhancement** for reconciliation assistance. It is no
 - Performance optimization
 - Accessibility audit (WCAG 2.1 AA)
 - Statement-level reconciliation (see §21): manual statement balance entry, period-end balance comparison, reconciliation event persistence, discrepancy surfacing
-- Auto-carry on month rollover: silently auto-create the current month register from prior month's last-cleared balance on app access; Initialize modal suppressed when auto-carry applies (see §11)
+- Auto-carry: silently auto-create any viewed month's register from the most recent prior month's closing balance; Initialize modal appears only when no prior register exists (see §11)
 
 ---
 

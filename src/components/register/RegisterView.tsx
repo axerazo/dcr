@@ -1,15 +1,19 @@
 // ============================================================
 // RegisterView — top-level register page for one account
 // Implements the month_status lifecycle: open → ready_to_close
-// → soft_closed → hard_closed. Silent carry-forward on every
-// transaction clear. SPEC §9 Formula E (revised), §11, §12.
+// → soft_closed → hard_closed. Auto-creates missing registers from
+// the most recent prior month (SPEC §11 auto-carry) and silently
+// carries the closing balance forward on every transaction change.
+// Carry-forward rule = computeClosingBalance (last amount-bearing
+// non-void row, status-blind) — SPEC §9 Formulas C/E, settled
+// against the Excel oracle 2026-07.
 // ============================================================
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { useRegister, useCreateRegister, useUpdateRegister } from '@/hooks/useRegister'
+import { useRegister, useCreateRegister, useUpdateRegister, useMostRecentRegisterBefore } from '@/hooks/useRegister'
 import { useTransactions, useAddTransaction, useUpdateTransaction, useUpdateTransactionStatus, useDeleteTransaction } from '@/hooks/useTransactions'
 import { computeBalanceSummary, computeClosingBalance, formatCurrency, currencyEq } from '@/lib/balance'
-import { computeLastClearedRunningBalance, pendingTransactionCount, allTransactionsCleared } from '@/lib/monthStatus'
+import { pendingTransactionCount, allTransactionsCleared } from '@/lib/monthStatus'
 import { writeAuditEntry } from '@/lib/audit'
 import { buildReconciliationContext } from '@/lib/reconciliation/buildContext'
 import { runReconciliationSession } from '@/lib/reconciliation/reconciliationService'
@@ -46,7 +50,7 @@ export function RegisterView({ account }: RegisterViewProps) {
   const [closePromptDismissed, setClosePromptDismissed] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
   const [closeKeepAcknowledged, setCloseKeepAcknowledged] = useState(false)
-  // Tracks the lastClearedBalance value at which the user dismissed the mismatch prompt.
+  // Tracks the closingBalance value at which the user dismissed the mismatch prompt.
   // When balance changes to a new value the ref resets and the prompt re-arms.
   const dismissedForBalanceRef = useRef<number | null>(null)
   // Re-lock validation error — shown inline, cleared on navigation
@@ -75,6 +79,18 @@ export function RegisterView({ account }: RegisterViewProps) {
   const pm = prevMonthOf(activeMonth, activeYear)
   const { data: priorMonthReg } = useRegister(account.id, pm.month, pm.year)
 
+  // Auto-carry source — the most recent register strictly before this month
+  // (gaps allowed, SPEC §11). Drives silent register auto-creation below.
+  const { data: carrySource, isLoading: carrySourceLoading } = useMostRecentRegisterBefore(
+    account.id,
+    activeMonth,
+    activeYear,
+  )
+  const { data: carrySourceTxs = [], isLoading: carryTxLoading } = useTransactions(carrySource?.id)
+  // One auto-create attempt per account+month — guards StrictMode double-fire
+  // and prevents retry loops if creation fails.
+  const autoCreateKeyRef = useRef<string | null>(null)
+
   const createRegister = useCreateRegister()
   const updateRegister = useUpdateRegister()
   const addTransaction = useAddTransaction()
@@ -90,10 +106,6 @@ export function RegisterView({ account }: RegisterViewProps) {
   const closingBalance: number | null = register
     ? computeClosingBalance(register.opening_balance, transactions)
     : null
-
-  const lastClearedBalance: number = register
-    ? computeLastClearedRunningBalance(register.opening_balance, transactions)
-    : 0
 
   const pendingCount = pendingTransactionCount(transactions)
 
@@ -124,12 +136,13 @@ export function RegisterView({ account }: RegisterViewProps) {
   // Mismatch prompt — fully computed, no state. Must be declared here (before any
   // early returns) to satisfy Rules of Hooks. Guards register null for the same reason.
   // nextMonthIsArchived = true → always false; no setter can race the guard.
-  // Dismissed by writing dismissedForBalanceRef; re-arms when lastClearedBalance changes.
+  // Dismissed by writing dismissedForBalanceRef; re-arms when closingBalance changes.
   const showMismatchPrompt = useMemo(() => {
     if (!register || register.month_status !== 'open') return false
+    if (closingBalance == null) return false
     if (nextMonthIsArchived) return false
     if (!nextMonthReg) return false
-    if (currencyEq(lastClearedBalance, nextMonthReg.opening_balance)) return false
+    if (currencyEq(closingBalance, nextMonthReg.opening_balance)) return false
 
     // Require user decision when next month was previously committed (soft or hard
     // closed and now reopened) OR manually entered — never silently overwrite a
@@ -140,21 +153,22 @@ export function RegisterView({ account }: RegisterViewProps) {
     if (!requiresDecision) return false
     if (
       dismissedForBalanceRef.current !== null &&
-      currencyEq(dismissedForBalanceRef.current, lastClearedBalance)
+      currencyEq(dismissedForBalanceRef.current, closingBalance)
     ) return false
     return true
-  }, [register, nextMonthIsArchived, nextMonthReg, lastClearedBalance])
+  }, [register, nextMonthIsArchived, nextMonthReg, closingBalance])
 
-  // Reset dismissal ref when lastClearedBalance moves to a new value so the
+  // Reset dismissal ref when closingBalance moves to a new value so the
   // mismatch prompt re-arms for the new balance.
   useEffect(() => {
     if (
+      closingBalance != null &&
       dismissedForBalanceRef.current !== null &&
-      !currencyEq(dismissedForBalanceRef.current, lastClearedBalance)
+      !currencyEq(dismissedForBalanceRef.current, closingBalance)
     ) {
       dismissedForBalanceRef.current = null
     }
-  }, [lastClearedBalance])
+  }, [closingBalance])
 
   // --- Auto-update next month opening silently on every transaction change ---
   // Guards (skip silently updating when):
@@ -171,7 +185,8 @@ export function RegisterView({ account }: RegisterViewProps) {
       register.month_status === 'soft_closed' ||
       register.month_status === 'hard_closed'
     ) return
-    if (currencyEq(lastClearedBalance, nextMonthReg.opening_balance)) return
+    if (closingBalance == null) return
+    if (currencyEq(closingBalance, nextMonthReg.opening_balance)) return
 
     // Block carry-forward if next month is archived — prompt is suppressed via
     // the computed showMismatchPrompt, no state needed here.
@@ -190,12 +205,12 @@ export function RegisterView({ account }: RegisterViewProps) {
     // is_manual_opening = false). SPEC §2: nothing changes without user knowledge.
     updateRegister.mutate({
       id: nextMonthReg.id,
-      opening_balance: lastClearedBalance,
+      opening_balance: closingBalance,
       is_manual_opening: false,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    lastClearedBalance,
+    closingBalance,
     nextMonthReg?.id,
     nextMonthReg?.opening_balance,
     nextMonthReg?.is_locked,
@@ -203,6 +218,39 @@ export function RegisterView({ account }: RegisterViewProps) {
     nextMonthReg?.last_closed_type,
     nextMonthReg?.month_status,
     register?.month_status,
+  ])
+
+  // --- Register auto-creation (SPEC §11 auto-carry) ---
+  // When the viewed month has no register but a prior register exists (gaps
+  // allowed), silently create it seeded with the carry source's closing
+  // balance (last amount-bearing non-void row — status-blind). The register
+  // is created with is_manual_opening=false so the silent carry-forward
+  // effect above keeps its opening live until the source month archives.
+  // The Initialize modal now appears ONLY when no prior register exists
+  // (first-ever register or backfill before the first month).
+  useEffect(() => {
+    if (regLoading || register) return
+    if (carrySourceLoading || !carrySource || carryTxLoading) return
+    const key = `${account.id}:${activeYear}-${activeMonth}`
+    if (autoCreateKeyRef.current === key) return
+    autoCreateKeyRef.current = key
+    createRegister.mutate({
+      account_id: account.id,
+      month: activeMonth,
+      year: activeYear,
+      opening_balance: computeClosingBalance(carrySource.opening_balance, carrySourceTxs),
+      is_manual_opening: false,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    regLoading,
+    register,
+    carrySourceLoading,
+    carrySource?.id,
+    carryTxLoading,
+    activeMonth,
+    activeYear,
+    account.id,
   ])
 
   // --- Ready-to-close detection ---
@@ -370,9 +418,9 @@ export function RegisterView({ account }: RegisterViewProps) {
     }
   }
 
-  // --- Mismatch prompt: Use this month's cleared balance ---
+  // --- Mismatch prompt: Use this month's closing balance ---
   async function handleMismatchUseClosing() {
-    if (!nextMonthReg || !user) return
+    if (!nextMonthReg || !user || closingBalance == null) return
 
     // Block update if next month is archived — show inline message, keep prompt open.
     if (
@@ -387,7 +435,7 @@ export function RegisterView({ account }: RegisterViewProps) {
     const oldOpening = nextMonthReg.opening_balance
     await updateRegister.mutateAsync({
       id: nextMonthReg.id,
-      opening_balance: lastClearedBalance,
+      opening_balance: closingBalance,
       is_manual_opening: false,
     })
     await writeAuditEntry({
@@ -397,31 +445,31 @@ export function RegisterView({ account }: RegisterViewProps) {
       action: 'opening_balance_updated',
       field_changed: 'opening_balance',
       value_before: String(oldOpening),
-      value_after: String(lastClearedBalance),
+      value_after: String(closingBalance),
     })
     // Prompt is computed — dismiss by recording the balance at which user acted.
-    // After the mutate resolves, opening_balance will equal lastClearedBalance so
+    // After the mutate resolves, opening_balance will equal closingBalance so
     // the prompt naturally returns false anyway; this is a belt-and-suspenders guard.
-    dismissedForBalanceRef.current = lastClearedBalance
+    dismissedForBalanceRef.current = closingBalance
   }
 
   // --- Mismatch prompt: Keep next month's manually-entered opening ---
   // Persists acknowledgment to DB so prompt stays suppressed across navigation.
   // Re-arms automatically if April's opening or March's closing balance changes later.
   async function handleMismatchKeepOpening(reason: string) {
-    if (!nextMonthReg || !user) return
+    if (!nextMonthReg || !user || closingBalance == null) return
     await writeAuditEntry({
       user_id: user.id,
       account_id: account.id,
       register_id: nextMonthReg.id,
       action: 'opening_balance_mismatch_kept',
       field_changed: 'opening_balance',
-      value_before: String(lastClearedBalance),
+      value_before: String(closingBalance),
       value_after: String(nextMonthReg.opening_balance),
       reason,
     })
-    // Dismiss for this balance value; re-arms if lastClearedBalance changes.
-    dismissedForBalanceRef.current = lastClearedBalance
+    // Dismiss for this balance value; re-arms if closingBalance changes.
+    dismissedForBalanceRef.current = closingBalance
   }
 
   // --- Close unhappy path: Use this month's closing balance for next month's opening ---
@@ -741,6 +789,11 @@ export function RegisterView({ account }: RegisterViewProps) {
   }
 
   if (!register) {
+    // Auto-carry applies whenever a prior register exists (SPEC §11) — the
+    // effect above is creating this month right now, so show a transient
+    // state instead of the Initialize form. The form appears only when there
+    // is genuinely nothing to carry from (first-ever register / backfill).
+    const autoCarryApplies = carrySourceLoading || carrySource != null
     return (
       <div className="flex flex-col h-full">
         <div className="bg-slate-900 text-white px-4 py-3 border-b border-slate-700">
@@ -748,13 +801,19 @@ export function RegisterView({ account }: RegisterViewProps) {
           <p className="text-xs text-slate-400 mt-0.5">{monthLabel}</p>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <InitRegisterForm
-            month={activeMonth}
-            year={activeYear}
-            accountId={account.id}
-            onInit={handleInitRegister}
-            isLoading={createRegister.isPending}
-          />
+          {autoCarryApplies ? (
+            <div className="text-sm text-slate-400">
+              Preparing {monthLabel} — carrying forward the closing balance…
+            </div>
+          ) : (
+            <InitRegisterForm
+              month={activeMonth}
+              year={activeYear}
+              accountId={account.id}
+              onInit={handleInitRegister}
+              isLoading={createRegister.isPending}
+            />
+          )}
         </div>
         <MonthNav
           activeMonth={activeMonth}
@@ -795,7 +854,8 @@ export function RegisterView({ account }: RegisterViewProps) {
         pendingCount > 0 &&
         nextMonthReg && (
           <div className="px-4 py-1.5 bg-slate-800 border-b border-slate-700 text-xs text-slate-400">
-            Opening balance reflects {MONTH_NAMES[activeMonth - 1]}'s last cleared transaction.{' '}
+            {nextMonthLabel}'s opening balance auto-carries {MONTH_NAMES[activeMonth - 1]}'s
+            closing balance and updates live until {MONTH_NAMES[activeMonth - 1]} is archived.{' '}
             <span className="text-slate-300 font-medium">{pendingCount}</span>{' '}
             {pendingCount === 1 ? 'transaction' : 'transactions'} still pending in{' '}
             {MONTH_NAMES[activeMonth - 1]}.
@@ -814,13 +874,13 @@ export function RegisterView({ account }: RegisterViewProps) {
       )}
 
       {/* Mismatch prompt — fires when next month has a manually-entered opening that
-          differs from this month's last cleared balance. Shown only in 'open' state
+          differs from this month's closing balance. Shown only in 'open' state
           so it doesn't compete with the ready-to-close prompt. */}
-      {showMismatchPrompt && nextMonthReg && (
+      {showMismatchPrompt && nextMonthReg && closingBalance != null && (
         <MismatchPrompt
           monthLabel={MONTH_NAMES[activeMonth - 1]}
           nextMonthLabel={nextMonthLabel}
-          lastClearedBalance={lastClearedBalance}
+          closingBalance={closingBalance}
           nextOpeningBalance={nextMonthReg.opening_balance}
           onUseCleared={handleMismatchUseClosing}
           onKeepOpening={handleMismatchKeepOpening}
@@ -1026,8 +1086,8 @@ function InitRegisterForm({ month, year, onInit, isLoading }: InitRegisterFormPr
         Initialize {monthName} {year}
       </h2>
       <p className="text-sm text-slate-500 mb-4">
-        Enter the opening balance for this register. For January this is your starting balance;
-        for other months it auto-carries from the prior month once that month exists.
+        Enter the starting balance for this register. This only happens once — every later
+        month, including January across year boundaries, auto-carries from the prior month.
       </p>
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
@@ -1058,14 +1118,14 @@ function InitRegisterForm({ month, year, onInit, isLoading }: InitRegisterFormPr
 // ============================================================
 // MismatchPrompt — fires during 'open' state when next month's
 // opening balance was manually entered and differs from this
-// month's last cleared running balance.
+// month's closing balance (last amount-bearing non-void row).
 // SPEC §2: nothing changes without user knowledge.
 // ============================================================
 
 interface MismatchPromptProps {
   monthLabel: string
   nextMonthLabel: string
-  lastClearedBalance: number
+  closingBalance: number
   nextOpeningBalance: number
   onUseCleared: () => void
   onKeepOpening: (reason: string) => void
@@ -1075,7 +1135,7 @@ interface MismatchPromptProps {
 function MismatchPrompt({
   monthLabel,
   nextMonthLabel,
-  lastClearedBalance,
+  closingBalance,
   nextOpeningBalance,
   onUseCleared,
   onKeepOpening,
@@ -1083,7 +1143,7 @@ function MismatchPrompt({
 }: MismatchPromptProps) {
   const [explainVisible, setExplainVisible] = useState(false)
   const [keepReason, setKeepReason] = useState('')
-  const diff = Math.abs(lastClearedBalance - nextOpeningBalance)
+  const diff = Math.abs(closingBalance - nextOpeningBalance)
 
   return (
     <div className="mx-4 my-2 bg-amber-50 border border-amber-300 rounded-lg p-4 shadow-sm">
@@ -1091,8 +1151,8 @@ function MismatchPrompt({
         <span className="font-semibold">⚠️ Opening balance mismatch</span>
       </p>
       <p className="text-sm text-amber-700 mb-3">
-        {monthLabel}'s last cleared balance is{' '}
-        <span className="font-semibold tabular-nums">{formatCurrency(lastClearedBalance)}</span>,
+        {monthLabel}'s closing balance is{' '}
+        <span className="font-semibold tabular-nums">{formatCurrency(closingBalance)}</span>,
         but {nextMonthLabel}'s opening balance (manually entered) is{' '}
         <span className="font-semibold tabular-nums">{formatCurrency(nextOpeningBalance)}</span> —
         a <span className="font-semibold tabular-nums">{formatCurrency(diff)}</span> difference.
@@ -1108,7 +1168,7 @@ function MismatchPrompt({
           onClick={onUseCleared}
           className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 font-medium text-left"
         >
-          Use {monthLabel}'s closing balance — {formatCurrency(lastClearedBalance)}
+          Use {monthLabel}'s closing balance — {formatCurrency(closingBalance)}
         </button>
         <div className="flex flex-col gap-1">
           <button

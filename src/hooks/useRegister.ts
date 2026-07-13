@@ -25,6 +25,36 @@ export function useRegister(accountId: string | null, month: number, year: numbe
   })
 }
 
+/**
+ * Most recent existing register strictly before (month, year) for an account.
+ * SPEC §11 auto-carry source: "the most recent existing register in the past,
+ * not necessarily the immediately prior calendar month. Gaps are allowed."
+ */
+export function useMostRecentRegisterBefore(
+  accountId: string | null,
+  month: number,
+  year: number,
+) {
+  return useQuery({
+    queryKey: ['register-before', accountId, month, year],
+    enabled: !!accountId,
+    queryFn: async (): Promise<DbRegister | null> => {
+      if (!accountId) return null
+      const { data, error } = await supabase
+        .from('registers')
+        .select('*')
+        .eq('account_id', accountId)
+        .or(`year.lt.${year},and(year.eq.${year},month.lt.${month})`)
+        .order('year', { ascending: false })
+        .order('month', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (error) throw error
+      return data as DbRegister | null
+    },
+  })
+}
+
 export function useCreateRegister() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -47,6 +77,11 @@ export function useCreateRegister() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({
         queryKey: ['register', data.account_id, data.month, data.year],
+      })
+      // A newly created register may now be the "most recent prior" for any
+      // later month — invalidate all auto-carry source lookups for the account.
+      queryClient.invalidateQueries({
+        queryKey: ['register-before', data.account_id],
       })
     },
   })

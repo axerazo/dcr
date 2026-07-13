@@ -20,7 +20,6 @@ import {
   computeBalanceSummary,
   currencyEq,
 } from './balance'
-import { computeLastClearedRunningBalance } from './monthStatus'
 import type { DbTransaction, TransactionStatus } from '@/types'
 
 // ── Fixture types (mirror docs/golden-master/FIXTURE_SCHEMA.md) ─────────────
@@ -331,43 +330,56 @@ for (const fixture of fixtures) {
   })
 }
 
-// ── Characterization: legacy last-cleared rule divergence ────────────────────
-// computeLastClearedRunningBalance implements the superseded last-cleared rule.
-// Under trailing non-cleared rows it diverges from the oracle by exactly the
-// sum of amounts after the last cleared row. This test PINS the current
-// behavior and documents the divergence; it must be updated (or the function
-// deleted) when RegisterView adopts the oracle rule (computeClosingBalance).
-// TODO(phase-1.5): replace last-cleared carry-forward wiring with closing-balance rule.
+// ── Carry-forward rule (Phase 1.5: oracle rule adopted) ─────────────────────
+// History: monthStatus.ts formerly implemented a "last-cleared" carry-forward
+// rule (computeLastClearedRunningBalance). Empirical validation against the
+// Excel oracle (2026-07) showed the true rule is status-blind: carry-forward =
+// balance of the last amount-bearing non-void row = computeClosingBalance.
+// The legacy function was retired in Phase 1.5 and RegisterView now seeds and
+// live-updates next-month openings from computeClosingBalance. These tests
+// pin the adopted rule using the same numbers that settled the question.
 
-describe('characterization: legacy last-cleared carry-forward rule', () => {
-  const trailing = fixtures.find((f) => f.scenario === 'seed_trailing_pending')
-
-  it('diverges from the oracle when the month ends with pending rows', () => {
+describe('carry-forward rule: status-blind last-row (oracle, adopted Phase 1.5)', () => {
+  it('carries the last amount-bearing row balance even when it is pending', () => {
+    const trailing = fixtures.find((f) => f.scenario === 'seed_trailing_pending')
     expect(trailing).toBeDefined()
     const month = trailing!.months[0]
     const txs = toDb(month)
 
-    const lastCleared = computeLastClearedRunningBalance(month.opening_balance, txs)
-    const oracleClosing = computeClosingBalance(month.opening_balance, txs)
-
-    // Pinned current behavior: 870 (running balance at last cleared row).
-    expectCurrency(lastCleared, 870.0, 'legacy last-cleared value')
-    // Oracle rule: 840 (last amount-bearing row, status-blind).
-    expectCurrency(oracleClosing, 840.0, 'oracle closing value')
-    // The divergence is real and equals the trailing pending debit.
-    expect(currencyEq(lastCleared, oracleClosing)).toBe(false)
-    expectCurrency(lastCleared - oracleClosing, 30.0, 'divergence = trailing pending amount')
+    const carry = computeClosingBalance(month.opening_balance, txs)
+    // Oracle rule: 840 (last row, status-blind) — NOT 870 (the retired
+    // last-cleared rule). The $30 gap is the trailing pending debit that the
+    // legacy rule wrongly excluded from next month's opening.
+    expectCurrency(carry, 840.0, 'oracle carry-forward')
+    expect(currencyEq(carry, 870.0)).toBe(false)
   })
 
-  it('converges with the oracle when every row is cleared', () => {
+  it('is unaffected by relabeling the trailing row among non-cleared statuses', () => {
+    const trailing = fixtures.find((f) => f.scenario === 'seed_trailing_pending')!
+    const month = trailing.months[0]
+    for (const status of NON_CLEARED_NON_VOID) {
+      const txs = toDb(month).map((t, i, arr) =>
+        i === arr.length - 1 ? { ...t, status } : t,
+      )
+      expectCurrency(
+        computeClosingBalance(month.opening_balance, txs),
+        840.0,
+        `carry with trailing status=${status}`,
+      )
+    }
+  })
+
+  it('converges with the fully-cleared value at month close', () => {
     const happy = fixtures.find((f) => f.scenario === 'seed_happy_path')
     expect(happy).toBeDefined()
     const month = happy!.months[0]
     const txs = toDb(month)
+    const summary = computeBalanceSummary(month.opening_balance, txs)
+    expect(summary.is_reconciled).toBe(true)
     expectCurrency(
-      computeLastClearedRunningBalance(month.opening_balance, txs),
       computeClosingBalance(month.opening_balance, txs),
-      'convergence at full reconciliation',
+      summary.available_balance,
+      'closing = available when everything is cleared',
     )
   })
 })

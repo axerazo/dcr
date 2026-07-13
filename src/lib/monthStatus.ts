@@ -1,35 +1,15 @@
 // ============================================================
-// Month lifecycle helpers — SPEC §11 (revised)
+// Month lifecycle helpers — SPEC §11
+//
+// NOTE (Phase 1.5, 2026-07): the former computeLastClearedRunningBalance
+// ("last-cleared" carry-forward rule) was retired. Empirical validation
+// against the Excel oracle (LOOKUP(9.99E+307, PRIOR!$H:$H) over a
+// status-blind balance column) confirmed the true carry-forward rule is
+// the balance of the last amount-bearing, non-void row — which is
+// computeClosingBalance in balance.ts (SPEC §9 Formulas C/E).
 // ============================================================
 
 import type { DbTransaction } from '@/types'
-
-/**
- * Opening balance carry-forward rule (revised):
- * Next month's opening = running balance at the LAST CLEARED transaction
- * in the prior month, iterating transactions in row_order sequence.
- *
- * Running balance includes all non-void transactions in order.
- * The "snapshot" is taken at each cleared row.
- * Returns opening_balance unchanged when no cleared transactions exist.
- */
-export function computeLastClearedRunningBalance(
-  openingBalance: number,
-  transactions: DbTransaction[],
-): number {
-  let running = openingBalance
-  let lastCleared = openingBalance
-
-  for (const tx of transactions) {
-    if (tx.status === 'void' || (tx.debit == null && tx.credit == null)) continue
-    running += (tx.credit ?? 0) - (tx.debit ?? 0)
-    if (tx.status === 'cleared') {
-      lastCleared = running
-    }
-  }
-
-  return lastCleared
-}
 
 /**
  * Count of non-void, non-cleared transactions (still "in flight" for carry-forward).
