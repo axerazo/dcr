@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "env:test": "node scripts/write-env-test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.108.0",
