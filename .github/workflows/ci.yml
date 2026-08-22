@@ -35,3 +35,52 @@ jobs:
 
       - name: Test
         run: npm run test:run
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    # Deliberately a separate job from `verify`, not extra steps on it: the unit
+    # suite stays fast, and a Playwright failure is distinguishable at a glance.
+    #
+    # No secrets are required. The Supabase keys this job writes into .env.test
+    # are the CLI's public demo keys — the same fixed JWTs every local stack
+    # ships with. Nothing here is missing; do not add a secret.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Write .env.test
+        # Generated from the running stack rather than committed CI values, so
+        # the URLs and keys can never drift from what the stack actually serves.
+        run: npm run env:test
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E suite
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

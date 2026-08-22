@@ -23,5 +23,18 @@ export default defineConfig([
       ],
     },
   },
-  { ignores: ["dist/**", "node_modules/**"] },
+  {
+    // Playwright fixtures call `use(value)` to hand a fixture to the test.
+    // react-hooks/rules-of-hooks sees the name and flags it as a misplaced
+    // React hook. It is a false positive — there is no React in e2e/ — so the
+    // rule is switched off for this directory only.
+    files: ["e2e/**/*.ts"],
+    rules: { "react-hooks/rules-of-hooks": "off" },
+  },
+  {
+    // dist and node_modules as before; supabase/.temp holds minified bundles
+    // that `supabase start` generates (already gitignored via
+    // supabase/.gitignore) and must not be linted as project source.
+    ignores: ["dist/**", "node_modules/**", "supabase/.temp/**"],
+  },
 ]);
