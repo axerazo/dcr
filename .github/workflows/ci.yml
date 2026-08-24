@@ -39,6 +39,7 @@ jobs:
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
+    needs: verify
     # Deliberately a separate job from `verify`, not extra steps on it: the unit
     # suite stays fast, and a Playwright failure is distinguishable at a glance.
     #
