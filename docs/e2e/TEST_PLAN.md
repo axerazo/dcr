@@ -36,6 +36,12 @@ performance/load.
 | Diagnostics | Trace + video on first retry; HTML report uploaded as CI artifact | Debuggability without slowing green runs |
 | Selectors | `getByRole` / `getByLabel` first; `data-testid` only where semantics are absent | Doubles as a passive accessibility audit |
 
+> **Unresolved tension.** §2 commits to both "sign in once, persist
+> `storageState`" and "isolated account per test." Under RLS these fight: the
+> long-lived `storageState` user cannot see per-test seeded data. The scaffold
+> works around it by overriding the session via `context.addInitScript`, which
+> leaves `storageState` largely vestigial. Revisit when writing CUJ-01.
+
 ## 3. Journey inventory
 
 Priority tiers: **P0** = smoke-critical (must pass before any merge), **P1** = core lifecycle,
@@ -43,7 +49,7 @@ Priority tiers: **P0** = smoke-critical (must pass before any merge), **P1** = c
 
 | # | Journey | Priority | Spec file | Status |
 | --- | --- | --- | --- | --- |
-| CUJ-01 | Sign in and land on the current month's register | P0 | `e2e/auth.setup.ts` + `e2e/01-auth.spec.ts` | Wave 1 |
+| CUJ-01 | Sign in and land on the current month's register | P0 | `e2e/setup/auth.setup.ts` + `e2e/01-auth.spec.ts` | Wave 1 |
 | CUJ-02 | Record a transaction and see running balances update | P0 | `e2e/02-record-transaction.spec.ts` | Wave 1 |
 | CUJ-03 | Void a transaction — strikethrough renders, balances unchanged | P0 | `e2e/03-void-transaction.spec.ts` | Wave 1 |
 | CUJ-04 | Month rollover — register auto-created, opening balance live-carries | P0 | `e2e/04-auto-carry.spec.ts` | Wave 2 |
@@ -194,6 +200,14 @@ summary. Each wave lands as one reviewed patch with CI green.
 A journey is done when its spec passes 3× consecutively locally and in CI (no flake), uses
 role-based selectors or documented exceptions, creates and tears down its own data, asserts
 the oracle (not incidental DOM), and is traceable here by CUJ number.
+
+> **Amendment — audit-writing journeys.** "Creates and tears down its own data"
+> cannot hold where a journey writes to `audit_log`. All `audit_log` FKs are
+> `NO ACTION` and the `audit_log_no_delete` trigger rejects DELETE outright, so
+> once an audit row exists that user's data is permanently undeletable. This is
+> the append-only invariant working as designed, not a defect. CI is unaffected
+> (fresh stack per run); locally, `supabase db reset` is the reset path. First
+> affects CUJ-03.
 
 ---
 *Maintained alongside SPEC.md; update this plan in the same PR as any journey change.*

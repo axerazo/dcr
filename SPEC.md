@@ -989,6 +989,13 @@ Bank sync is an **optional enhancement** for reconciliation assistance. It is no
 
 ## 19. Tech Stack Recommendation
 
+> **Implementation deviation.** This section specifies the Anthropic
+> integration via Supabase Edge Function. `src/lib/reconciliation/
+> reconciliationService.ts` instead calls the SDK in-browser with
+> `dangerouslyAllowBrowser: true`, which inlines `VITE_ANTHROPIC_API_KEY` into
+> the client bundle. Safe while local-only; must be resolved before any
+> deployment. Blocks CUJ-11.
+
 ### Frontend
 | Layer | Technology | Reason |
 |---|---|---|
