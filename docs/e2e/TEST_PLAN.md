@@ -36,11 +36,27 @@ performance/load.
 | Diagnostics | Trace + video on first retry; HTML report uploaded as CI artifact | Debuggability without slowing green runs |
 | Selectors | `getByRole` / `getByLabel` first; `data-testid` only where semantics are absent | Doubles as a passive accessibility audit |
 
-> **Unresolved tension.** §2 commits to both "sign in once, persist
-> `storageState`" and "isolated account per test." Under RLS these fight: the
-> long-lived `storageState` user cannot see per-test seeded data. The scaffold
-> works around it by overriding the session via `context.addInitScript`, which
-> leaves `storageState` largely vestigial. Revisit when writing CUJ-01.
+> **Resolved.** §2 commits to both "sign in once, persist `storageState`" and
+> "isolated account per test." Under RLS these fight: the long-lived
+> `storageState` user cannot see per-test seeded data. Two fixtures in
+> `e2e/fixtures/seed.ts` resolve this differently for two situations:
+>
+> * **CUJ-02 through CUJ-12** (login is a precondition, not the subject): the
+>   `seed` fixture overrides the session via `context.addInitScript`, which
+>   runs after Playwright restores the project-level `storageState` and before
+>   any page script, so the per-test user deterministically wins. The
+>   `storageState` file itself stays in play only as an early canary — the
+>   `setup` project proves the real sign-in path works once, against a
+>   deliberately empty long-lived user, before any journey runs.
+> * **CUJ-01** (login *is* the subject): `addInitScript` would pre-authenticate
+>   the page before the test could ever reach the login form, and the
+>   `chromium` project's default `storageState` would too. `01-auth.spec.ts`
+>   must therefore reset to a signed-out context with
+>   `test.use({ storageState: { cookies: [], origins: [] } })` (Playwright's
+>   documented pattern for this) and use the `seedUnauthenticated` fixture,
+>   which creates the same user/account/register as `seed` but never touches
+>   the session — leaving the real UI login form the only path to
+>   authentication for this one journey.
 
 ## 3. Journey inventory
 

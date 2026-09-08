@@ -79,7 +79,6 @@ Documented rather than discovered — this section exists on purpose.
 - Bank sync via Plaid (Phase 3)
 - CSV export / import (Phase 4)
 - Statement-level reconciliation against bank monthly statements (Phase 4)
-- Auto-carry of opening balance on month rollover (specified, not yet implemented)
 - Account Settings UI for managing routing/account numbers (Phase 4)
 
 ## Tech stack

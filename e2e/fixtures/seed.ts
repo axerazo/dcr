@@ -7,6 +7,20 @@
 //
 // The fixture also re-points the browser at the per-test user — see the long
 // comment in e2e/setup/auth.setup.ts for why storageState alone is not enough.
+//
+// Two fixtures are exported, differing only in whether the context arrives
+// pre-authenticated:
+//
+//   * `seed` — the above. Used by every journey EXCEPT CUJ-01, because those
+//     journeys are not testing sign-in and should not pay for it.
+//   * `seedUnauthenticated` — same user/account/register, created the same
+//     way, but skips authenticateContextAs. Used by CUJ-01 (e2e/01-auth.spec.ts)
+//     alone, which is the one journey whose subject IS the sign-in UI. That
+//     spec must also reset the project's default storageState to a signed-out
+//     state (`test.use({ storageState: { cookies: [], origins: [] } })`),
+//     since seedUnauthenticated intentionally does not touch the session —
+//     it only ensures there is a real user+account+register in the database
+//     for the UI login form to authenticate against.
 // ============================================================
 
 import { randomUUID } from 'node:crypto'
@@ -248,85 +262,126 @@ async function teardown(userId: string, email: string): Promise<void> {
   }
 }
 
+/**
+ * Build the insertTransactions/createRegister helpers bound to one seeded
+ * account. Shared by `seed` and `seedUnauthenticated` — the DB-writing
+ * surface a spec sees is identical either way; only the browser session
+ * setup differs.
+ */
+function buildAccountHelpers(account: { accountId: string; registerId: string }): Pick<
+  SeededAccount,
+  'insertTransactions' | 'createRegister'
+> {
+  const insertTransactions = async (
+    rows: SeedTransactionInput[],
+  ): Promise<SeededTransaction[]> => {
+    if (rows.length === 0) return []
+    const payload = rows.map((row, index) => ({
+      register_id: account.registerId,
+      row_order: row.rowOrder ?? index + 1,
+      date: row.date,
+      description: row.description,
+      status: row.status ?? 'recorded',
+      debit: row.debit ?? null,
+      credit: row.credit ?? null,
+      check_number: row.checkNumber ?? null,
+      notes: row.notes ?? null,
+      scheduled_date: row.scheduledDate ?? null,
+    }))
+    const { data, error } = await supabaseAdmin
+      .from('transactions')
+      .insert(payload)
+      .select('id, row_order')
+    if (error || !data) {
+      throw new Error(`[e2e/seed] Failed to insert transactions: ${error?.message}`)
+    }
+    // PostgREST returns inserted rows in input order.
+    return data.map((row) => ({ id: row.id as string, rowOrder: row.row_order as number }))
+  }
+
+  const createRegister = async (input: CreateRegisterInput): Promise<string> => {
+    const { data, error } = await supabaseAdmin
+      .from('registers')
+      .insert({
+        account_id: account.accountId,
+        month: input.month,
+        year: input.year,
+        opening_balance: input.openingBalance,
+        is_manual_opening: input.isManualOpening ?? false,
+        month_status: input.monthStatus ?? 'open',
+        is_locked: input.isLocked ?? false,
+      })
+      .select('id')
+      .single()
+    if (error || !data) {
+      throw new Error(
+        `[e2e/seed] Failed to create register ${input.month}/${input.year}: ${error?.message}`,
+      )
+    }
+    return data.id as string
+  }
+
+  return { insertTransactions, createRegister }
+}
+
+/**
+ * Create the user/account/register trio shared by both fixtures, optionally
+ * authenticating the browser context.
+ *
+ * If setup fails after the auth user exists, it is torn down before
+ * rethrowing — fixture teardown only runs once use() has been reached, so
+ * without this a mid-setup failure leaks an auth user into the local
+ * database.
+ */
+async function setUpSeededAccount(
+  context: BrowserContext,
+  authenticate: boolean,
+): Promise<SeededAccount> {
+  const { userId, email } = await createSeedUser()
+
+  let account: Awaited<ReturnType<typeof createSeedAccount>>
+  try {
+    account = await createSeedAccount(userId)
+    if (authenticate) {
+      await authenticateContextAs(context, email, SEED_PASSWORD)
+    }
+  } catch (err) {
+    await teardown(userId, email)
+    throw err
+  }
+
+  return {
+    userId,
+    email,
+    password: SEED_PASSWORD,
+    ...account,
+    ...buildAccountHelpers(account),
+  }
+}
+
 export interface SeedFixtures {
   seed: SeededAccount
+  /**
+   * Same as `seed`, but the browser context is left untouched — no
+   * addInitScript session override. For CUJ-01 only: pair with
+   * `test.use({ storageState: { cookies: [], origins: [] } })` in the spec
+   * file so the context also starts signed out, then drive the real login
+   * form with `.email` / `.password`.
+   */
+  seedUnauthenticated: SeededAccount
 }
 
 export const test = base.extend<SeedFixtures>({
   seed: async ({ context }, use) => {
-    const { userId, email } = await createSeedUser()
+    const account = await setUpSeededAccount(context, true)
+    await use(account)
+    await teardown(account.userId, account.email)
+  },
 
-    // If setup fails after the user exists, tear it down before rethrowing —
-    // fixture teardown only runs once use() has been reached, so without this
-    // a mid-setup failure leaks an auth user into the local database.
-    let account: Awaited<ReturnType<typeof createSeedAccount>>
-    try {
-      account = await createSeedAccount(userId)
-      await authenticateContextAs(context, email, SEED_PASSWORD)
-    } catch (err) {
-      await teardown(userId, email)
-      throw err
-    }
-
-    const insertTransactions = async (
-      rows: SeedTransactionInput[],
-    ): Promise<SeededTransaction[]> => {
-      if (rows.length === 0) return []
-      const payload = rows.map((row, index) => ({
-        register_id: account.registerId,
-        row_order: row.rowOrder ?? index + 1,
-        date: row.date,
-        description: row.description,
-        status: row.status ?? 'recorded',
-        debit: row.debit ?? null,
-        credit: row.credit ?? null,
-        check_number: row.checkNumber ?? null,
-        notes: row.notes ?? null,
-        scheduled_date: row.scheduledDate ?? null,
-      }))
-      const { data, error } = await supabaseAdmin
-        .from('transactions')
-        .insert(payload)
-        .select('id, row_order')
-      if (error || !data) {
-        throw new Error(`[e2e/seed] Failed to insert transactions: ${error?.message}`)
-      }
-      // PostgREST returns inserted rows in input order.
-      return data.map((row) => ({ id: row.id as string, rowOrder: row.row_order as number }))
-    }
-
-    const createRegister = async (input: CreateRegisterInput): Promise<string> => {
-      const { data, error } = await supabaseAdmin
-        .from('registers')
-        .insert({
-          account_id: account.accountId,
-          month: input.month,
-          year: input.year,
-          opening_balance: input.openingBalance,
-          is_manual_opening: input.isManualOpening ?? false,
-          month_status: input.monthStatus ?? 'open',
-          is_locked: input.isLocked ?? false,
-        })
-        .select('id')
-        .single()
-      if (error || !data) {
-        throw new Error(
-          `[e2e/seed] Failed to create register ${input.month}/${input.year}: ${error?.message}`,
-        )
-      }
-      return data.id as string
-    }
-
-    await use({
-      userId,
-      email,
-      password: SEED_PASSWORD,
-      ...account,
-      insertTransactions,
-      createRegister,
-    })
-
-    await teardown(userId, email)
+  seedUnauthenticated: async ({ context }, use) => {
+    const account = await setUpSeededAccount(context, false)
+    await use(account)
+    await teardown(account.userId, account.email)
   },
 })
 
