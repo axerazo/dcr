@@ -1,10 +1,27 @@
+<!--
+=============================================================================
+VERIFY BEFORE COMMITTING — numbers below come from our notes, not from the repo
+=============================================================================
+  1. Test count: written as 79. Confirm against `npm run test` output.
+  2. Playwright status: written as "infrastructure standing, CUJ specs in
+     progress, Wave 1 underway." Adjust if Wave 1 has advanced or hasn't started.
+  3. TEST_PLAN path: written as docs/e2e/TEST_PLAN.md. Confirm.
+  4. The LOOKUP fix and carry-forward finding are described from our notes —
+     confirm the details match the actual commits before publishing.
+  5. Badge URL unchanged from yours.
+Delete this comment block before committing.
+=============================================================================
+-->
+
 # Digital Check Register ![CI](https://github.com/axerazo/dcr/actions/workflows/ci.yml/badge.svg)
 
-**Summary:** A personal project demonstrating ledger-first design, AI-assisted reconciliation, and human-in-the-loop AI engineering. Built collaboratively with Claude Code.
-
-A ledger-first personal finance tool with AI-assisted reconciliation.
+**A differential validation harness for AI-generated output — and the ledger-first finance application it validates.**
 
 > **Status:** Active development, personal project. Not deployed. Not production-ready.
+
+Most projects that use an LLM verify the output by looking at it. This one doesn't. Every figure the AI-assisted reconciliation engine produces is diffed against an independently built ground-truth oracle, continuously, as the system evolves.
+
+The finance application is the system under test. The validation approach is the point.
 
 ## Why this exists
 
@@ -12,7 +29,23 @@ Most personal finance apps treat the bank as the source of truth. This one inver
 
 The principle is simple: I record what I spend, I track its lifecycle (recorded → pending → cleared), and I use bank data to verify what I already know. AI helps surface discrepancies and suggest matches, but never makes decisions on my behalf. The user decides; AI assists.
 
-This started as a replacement for a hand-built Excel check register I'd been using for years. The web app is being validated against that Excel workbook through parallel testing — both systems entering the same transactions, with reconciliation expected to match exactly.
+This started as a replacement for a hand-built Excel check register I'd been using for years. That workbook became something more useful than a starting point: it is now the correctness oracle the application is validated against.
+
+## The validation problem
+
+"It looked right" is not a correctness standard.
+
+When a model classifies a financial transaction there is no fixed expected value to assert against, and a plausible-looking wrong answer is indistinguishable from a correct one at a glance. That is the central testing problem in AI-backed systems, and conventional assertions don't reach it.
+
+The approach here: maintain a parallel implementation of the same financial logic in a separate system — the Excel workbook, built independently of the application — and treat it as the oracle. Every calculation the application produces is diffed against it. Divergence is a defect in one of the two, and the process forces you to determine which.
+
+### What the method actually caught
+
+**The carry-forward rule.** The running-balance logic depends on how a register carries a balance forward. The rule was resolved empirically, by reading the oracle's formulas rather than by asking anyone: it is *status-blind* — the last amount-bearing, non-void row, regardless of cleared or pending status. That finding contradicted both my own verbal description of the rule and the AI's initial analysis of it. Two independent accounts of the requirement were wrong; the oracle was right.
+
+**A latent defect in the oracle itself.** Differential validation cuts both ways. The process surfaced a long-standing bug in the Excel model — a `LOOKUP(100000, ...)` that silently mis-resolved above its literal ceiling, corrected to `LOOKUP(9.99E+307, ...)`. The ground truth had been quietly wrong for years, and the harness is what exposed it.
+
+The second case is the more useful one. A validation strategy that can only ever indict the system under test isn't validation — it's confirmation. This one indicted the oracle.
 
 ## Current features
 
@@ -23,32 +56,50 @@ This started as a replacement for a hand-built Excel check register I'd been usi
 - Audit log for every state transition, including silent updates
 - Multi-account ready (single-account in active use)
 
+## Architecture highlights
+
+- **Ledger-first model.** "Current balance" (everything non-void) and "Available balance" (cleared only) are distinct, separately computed values. The system never tries to mimic the bank's opaque "available balance" calculation, which sidesteps an entire class of timing-noise bugs.
+- **Deterministic state transitions.** Status changes are driven by explicit user action or by data (a `scheduled_date` column drives scheduled/in-flight derivation). No regex parsing of free-text notes; no inferred state.
+- **AI as suggester, not decider.** The reconciliation pipeline produces structured JSON suggestions; the user accepts or rejects each one. AI never writes to the database directly.
+- **Differential validation as a standing process.** Not a one-time comparison — every financial calculation is reconciled against the Excel oracle as the application evolves, with divergences investigated in both directions.
+
+For full architectural detail, state machines, and design decisions, see [SPEC.md](./SPEC.md).
+
+## Testing
+
+```bash
+npm run test       # Vitest unit tests
+npm run test:ui    # Vitest with UI
+npm run test:e2e   # Playwright end-to-end suite
+```
+
+**Unit suite — 79 tests, CI green.** Covers the `balance.ts` financial math layer: running balance computation, current/available/closing balance derivation, in-flight detection, and currency comparison with half-cent tolerance. Established as a golden-master suite in Phase 1 and extended through Phase 1.5.
+
+**End-to-end.** Playwright infrastructure is standing: local Supabase stack, complete migration schema including GRANT statements, environment bootstrap script, and CI jobs green on GitHub Actions. CUJ specs are being implemented wave by wave.
+
+**[`docs/e2e/TEST_PLAN.md`](./docs/e2e/TEST_PLAN.md)** defines the E2E strategy: 12 critical user journeys across four implementation waves, traceability to SPEC sections, P0–P2 priority tiering, an explicit oracle definition per journey, and a written definition of done.
+
+**Differential validation** runs continuously against the Excel reference workbook — see [The validation problem](#the-validation-problem) above.
+
+## Known deviations
+
+Documented rather than discovered — this section exists on purpose.
+
+- **SPEC §19:** the Anthropic API key currently runs browser-side via `dangerouslyAllowBrowser: true` rather than being proxied through a Supabase Edge Function. A known, accepted deviation for the current single-user local deployment, tracked for remediation. Not suitable for a multi-user or hosted deployment as written.
+
 ## Planned
 
+- Supabase Edge Function migration for the Anthropic API call (see Known deviations)
+- Remaining Playwright CUJ waves per `TEST_PLAN.md`
 - Bank sync via Plaid (Phase 3)
 - CSV export / import (Phase 4)
 - Statement-level reconciliation against bank monthly statements (Phase 4)
 - Auto-carry of opening balance on month rollover (specified, not yet implemented)
 - Account Settings UI for managing routing/account numbers (Phase 4)
-- Supabase Edge Function migration for the Anthropic API call (currently client-side)
-- Playwright end-to-end test suite
-
-## Architecture highlights
-
-- **Ledger-first model.** "Current balance" (everything non-void) and "Available balance" (cleared only) are distinct, separately computed values. The system never tries to mimic the bank's opaque "available balance" calculation, which sidesteps an entire class of timing-noise bugs.
-- **Deterministic state transitions.** Status changes are driven by explicit user action or by data (a `scheduled_date` column drives scheduled/in-flight derivation). No regex parsing of free-text notes; no inferred state.
-- **AI as suggester, not decider.** The AI reconciliation pipeline produces structured JSON suggestions; the user accepts or rejects each one. AI never writes to the database directly.
-- **Differential validation.** The system has been parallel-tested against an existing Excel implementation across multiple months, achieving identical reconciliation as the correctness benchmark. Unit tests cover the financial math layer.
-
-For full architectural detail, state machines, and design decisions, see [SPEC.md](./SPEC.md).
 
 ## Tech stack
 
-- React 19, TypeScript, Vite
-- Tailwind CSS
-- Supabase (Postgres, Auth, Row-Level Security)
-- Anthropic Claude API for reconciliation suggestions
-- Vitest for unit tests; Playwright planned
+React 19 · TypeScript · Vite · Tailwind CSS · Supabase (Postgres, Auth, Row-Level Security) · Anthropic Claude API · Vitest · Playwright · GitHub Actions
 
 ## Getting started
 
@@ -56,7 +107,6 @@ This project requires your own Supabase project and Anthropic API key. It is not
 
 ```bash
 # Prerequisites: Node 20+, npm, Supabase CLI
-
 git clone <repo-url>
 cd <project>
 npm install
@@ -73,17 +123,6 @@ supabase db push
 npm run dev
 ```
 
-## Testing
-
-```bash
-npm run test       # Run Vitest unit tests
-npm run test:ui    # Run Vitest with UI
-```
-
-The unit suite currently covers the `balance.ts` financial math layer (28 tests): running balance computation, current/available/closing balance derivation, in-flight detection, and currency comparison with half-cent tolerance.
-
-End-to-end testing has been done manually via parallel comparison against an Excel reference workbook. A Playwright suite is planned.
-
 ## Project structure
 
 ```
@@ -96,13 +135,20 @@ src/
   types/             TypeScript type definitions
 supabase/
   migrations/        Database schema migrations
+docs/e2e/
+  TEST_PLAN.md       E2E strategy: CUJs, waves, oracles, definition of done
 SPEC.md              Detailed system specification (continuously maintained)
 README.md            This file
 ```
 
 ## Approach
 
-This project is built collaboratively with Claude as an implementation partner. Design and review happen in conversation; Claude Code handles implementation. SPEC.md serves as the synchronization point between design sessions and implementation sessions, and as a living document of architectural decisions and their rationale.
+Built with Claude as an implementation partner, under a deliberate division of labor rather than an open-ended one.
+
+Design and architectural decisions happen in conversation. Claude Code handles implementation and infrastructure scaffolding. **End-to-end test logic is human-authored** — I write the CUJ specs, Claude reviews them as a peer reviewer would review a pull request. `SPEC.md` is the synchronization point between design sessions and implementation sessions, and a living record of architectural decisions and their rationale.
+
+The differential validation described above exists precisely because AI-assisted output needs an independent correctness standard. The methodology is part of the project, not incidental to it.
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+MIT — see [LICENSE](LICENSE).
