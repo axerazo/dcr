@@ -1,18 +1,3 @@
-<!--
-=============================================================================
-VERIFY BEFORE COMMITTING — numbers below come from our notes, not from the repo
-=============================================================================
-  1. Test count: written as 79. Confirm against `npm run test` output.
-  2. Playwright status: written as "infrastructure standing, CUJ specs in
-     progress, Wave 1 underway." Adjust if Wave 1 has advanced or hasn't started.
-  3. TEST_PLAN path: written as docs/e2e/TEST_PLAN.md. Confirm.
-  4. The LOOKUP fix and carry-forward finding are described from our notes —
-     confirm the details match the actual commits before publishing.
-  5. Badge URL unchanged from yours.
-Delete this comment block before committing.
-=============================================================================
--->
-
 # Digital Check Register ![CI](https://github.com/axerazo/dcr/actions/workflows/ci.yml/badge.svg)
 
 **A differential validation harness for AI-generated output — and the ledger-first finance application it validates.**
