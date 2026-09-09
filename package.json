@@ -16,7 +16,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:flake": "playwright test --repeat-each=3 --retries=0 --workers=1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.108.0",
@@ -34,7 +35,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^5.1.1",
-    "@vitest/ui": "^4.1.10",
+    "@vitest/ui": "^4.1.11",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
@@ -50,7 +51,7 @@
     "typescript-eslint": "^8.62.1",
     "vite": "^6.0.0",
     "vite-plugin-pwa": "^0.21.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "allowScripts": {
     "esbuild": true
