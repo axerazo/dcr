@@ -95,9 +95,16 @@ export interface SeededAccount {
   createRegister: (input: CreateRegisterInput) => Promise<string>
 }
 
-/** Local-time current month/year. Never derive these from UTC — see CLAUDE.md rule 6. */
-function currentMonthYear(): { month: number; year: number } {
-  const now = new Date()
+/**
+ * Local-time month/year for a given instant. Never derive these from UTC —
+ * see CLAUDE.md rule 6. Takes `now` as a parameter rather than reading the
+ * wall clock itself: the caller must pass the SAME `now` used to pin the
+ * browser's clock (see pinClockTo below), or this and the browser's
+ * independently-read `new Date()` can land on different months across a
+ * local-midnight month boundary — the exact race clock-pinning exists to
+ * close (TEST_PLAN §2, "Definition of done" — zero-flake DoD).
+ */
+function currentMonthYear(now: Date): { month: number; year: number } {
   return { month: now.getMonth() + 1, year: now.getFullYear() }
 }
 
@@ -125,12 +132,20 @@ async function createSeedUser(): Promise<{ userId: string; email: string }> {
 /**
  * Seed one account plus one current-month register for userId.
  *
+ * `now` must be the same instant the browser's clock was pinned to (see
+ * pinClockTo) — that's what keeps this Node-side "current month" and the
+ * app's browser-side `new Date()` looking at the same month even if a run
+ * happens to straddle local midnight on the last day of the month.
+ *
  * Column values below are dictated by migration 001's NOT NULL and CHECK
  * constraints: nickname 1-50 chars, account_type in (checking, savings),
  * routing_number and account_number NOT NULL (the app AES-encrypts these at
  * the application layer, so any opaque string is schema-valid here).
  */
-async function createSeedAccount(userId: string): Promise<{
+async function createSeedAccount(
+  userId: string,
+  now: Date,
+): Promise<{
   accountId: string
   accountNickname: string
   registerId: string
@@ -157,7 +172,7 @@ async function createSeedAccount(userId: string): Promise<{
     throw new Error(`[e2e/seed] Failed to create account: ${accountError?.message}`)
   }
 
-  const { month, year } = currentMonthYear()
+  const { month, year } = currentMonthYear(now)
   const openingBalance = 1000
 
   const { data: register, error: registerError } = await supabaseAdmin
@@ -325,8 +340,33 @@ function buildAccountHelpers(account: { accountId: string; registerId: string })
 }
 
 /**
+ * Pin the browser context's notion of "now" to a specific instant.
+ *
+ * setFixedTime makes `Date.now()`/`new Date()` return `now` at all times
+ * while leaving real timers running — TanStack Query's refetch/retry
+ * backoff keeps working normally. `install()` would additionally fake
+ * setTimeout/setInterval/requestAnimationFrame, which is more than this
+ * needs and risks stalling query behavior; setFixedTime is Playwright's
+ * documented recommendation for exactly this "test with predefined time"
+ * case. Clock state lives on the BrowserContext, so it applies to every
+ * page opened in this context, not just whichever page happens to exist
+ * when this is called.
+ */
+async function pinClockTo(context: BrowserContext, now: Date): Promise<void> {
+  await context.clock.setFixedTime(now)
+}
+
+/**
  * Create the user/account/register trio shared by both fixtures, optionally
  * authenticating the browser context.
+ *
+ * The context's clock is pinned to the same `now` used to compute the
+ * seeded register's month/year, before any of the DB writes happen. That
+ * closes the month-boundary race: without it, this function's Node-side
+ * `new Date()` and the app's browser-side `new Date()` are two independent
+ * wall-clock reads that could disagree about the current month if a run
+ * straddles local midnight on the last day of the month — pinning makes
+ * them agree by construction instead of by luck.
  *
  * If setup fails after the auth user exists, it is torn down before
  * rethrowing — fixture teardown only runs once use() has been reached, so
@@ -337,11 +377,14 @@ async function setUpSeededAccount(
   context: BrowserContext,
   authenticate: boolean,
 ): Promise<SeededAccount> {
+  const now = new Date()
+  await pinClockTo(context, now)
+
   const { userId, email } = await createSeedUser()
 
   let account: Awaited<ReturnType<typeof createSeedAccount>>
   try {
-    account = await createSeedAccount(userId)
+    account = await createSeedAccount(userId, now)
     if (authenticate) {
       await authenticateContextAs(context, email, SEED_PASSWORD)
     }

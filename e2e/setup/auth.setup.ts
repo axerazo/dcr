@@ -62,13 +62,8 @@ setup('authenticate', async ({ page }) => {
 
   await page.goto('/')
 
-  // Selector exception, documented per TEST_PLAN §2: src/pages/LoginPage.tsx
-  // renders <label> elements that are neither wrapping nor linked by htmlFor,
-  // so the inputs have no accessible name and getByLabel cannot reach them.
-  // Falling back to type selectors rather than adding test ids to product code.
-  // Fixing the label association in LoginPage would let CUJ-01 use getByLabel.
-  await page.locator('input[type="email"]').fill(STORAGE_STATE_EMAIL)
-  await page.locator('input[type="password"]').fill(SEED_PASSWORD)
+  await page.getByLabel('Email').fill(STORAGE_STATE_EMAIL)
+  await page.getByLabel('Password').fill(SEED_PASSWORD)
   await page.getByRole('button', { name: 'Sign In', exact: true }).click()
 
   // The authenticated shell always renders Sign out, with or without accounts.

@@ -58,6 +58,22 @@ performance/load.
 >   the session — leaving the real UI login form the only path to
 >   authentication for this one journey.
 
+> **Resolved — month-boundary race.** "Isolated account per test" also
+> creates a second, unrelated race: `e2e/fixtures/seed.ts` computes the
+> seeded register's month/year with a Node-side `new Date()`, while
+> `RegisterView.tsx` independently computes its own `new Date()` in the
+> browser to decide which month is "current." These are two separate
+> wall-clock reads in two separate processes; if a run straddles local
+> midnight on the last day of a month, they can disagree about what month it
+> is, and the seeded register won't be the one the app renders as current —
+> a rare but real violation of the zero-flake DoD (§6). Both `seed` and
+> `seedUnauthenticated` now capture `now` once and pin the browser context's
+> clock to it via `context.clock.setFixedTime(now)` before seeding, then use
+> that same `now` to compute the register's month/year — so the two sides
+> agree by construction instead of by luck. `setFixedTime` (not `install`)
+> is used deliberately: it pins `Date.now()`/`new Date()` but leaves real
+> timers running, so TanStack Query's refetch/retry behavior is unaffected.
+
 ## 3. Journey inventory
 
 Priority tiers: **P0** = smoke-critical (must pass before any merge), **P1** = core lifecycle,
