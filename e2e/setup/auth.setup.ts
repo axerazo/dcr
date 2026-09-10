@@ -16,7 +16,8 @@
 // user to be. The choice is forced, not preferred:
 //
 //   DECISION: the storage-state user is a separate, long-lived seeded user
-//   (STORAGE_STATE_EMAIL below), distinct from every per-test user.
+//   (STORAGE_STATE_EMAIL, in ../fixtures/paths.ts), distinct from every
+//   per-test user.
 //
 // That alone would be a trap, because a test authenticated as the long-lived
 // user cannot see data seeded for its own user — RLS scopes every table to
@@ -40,10 +41,7 @@ import { dirname } from 'node:path'
 import { expect, test as setup } from '@playwright/test'
 import { supabaseAdmin } from '../fixtures/supabase-admin'
 import { SEED_PASSWORD } from '../fixtures/seed'
-import { STORAGE_STATE_PATH } from '../fixtures/paths'
-
-/** Stable address, so the user is created once and reused across local runs. */
-const STORAGE_STATE_EMAIL = 'dcr-e2e-storage@example.test'
+import { STORAGE_STATE_PATH, STORAGE_STATE_EMAIL } from '../fixtures/paths'
 
 setup('authenticate', async ({ page }) => {
   // Idempotent create: the user survives between local runs, and CI starts
