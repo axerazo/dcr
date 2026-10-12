@@ -65,6 +65,43 @@ it governs, and cite the section (e.g., "SPEC §9") in commit messages when rele
 - The `.claude/agents/code-quality-reviewer.md` subagent should be invoked after
   significant changes; it keeps project memory.
 
+## E2E tests (Playwright)
+
+The E2E suite covers twelve Critical User Journeys (CUJs) and no more. The plan lives in
+`docs/e2e/TEST_PLAN.md`; **§4 is the oracle** for each journey. Anything provable at a lower
+layer (formula correctness, float boundaries) belongs in Vitest, not here.
+
+- Commands: `npm run test:e2e` (full run), `npm run test:e2e:flake` (zero-flake check:
+  `--repeat-each=3 --retries=0 --workers=1`), `npm run test:e2e:ui`, `npm run test:e2e:report`.
+  Supabase local must be running (`supabase start`, `npm run env:test`).
+- Layout: `e2e/NN-<journey>.spec.ts` (specs), `e2e/fixtures/` (`seed`, `seedUnauthenticated`,
+  `register`, paths/env/admin client), `e2e/pages/` (page objects, e.g. `RegisterPage`),
+  `e2e/support/` (helpers, e.g. `money()`), `e2e/setup/auth.setup.ts`.
+- Fixtures encode architecture, so don't bypass them:
+  - `seed` = authenticated per-test user with bank data. Use it for every journey where
+    login is a precondition.
+  - `seedUnauthenticated` = same data, no browser session. CUJ-01 (login is the subject)
+    uses it together with `test.use({ storageState: { cookies: [], origins: [] } })`.
+  - `STORAGE_STATE_PATH` / `STORAGE_STATE_EMAIL` (in `e2e/fixtures/paths.ts`) belong to the
+    long-lived setup user with no accounts; keep them out of `auth.setup.ts` to avoid the
+    Playwright import-time `setup()` error.
+  - Month-boundary race: capture `now` once, pin it with `context.clock.setFixedTime(now)`,
+    and pass the same `now` into the seed so Node and browser agree on the current month.
+    Use `setFixedTime`, not `clock.install()`: install also fakes timers and risks stalling
+    TanStack Query's refetch/retry behavior.
+- Selectors: `getByRole` / `getByLabel` first; `data-testid` only where semantics are absent.
+- Definition of done (TEST_PLAN §6): passes 3x consecutively with no retries, locally and in
+  CI; asserts the oracle, not incidental DOM; creates and tears down its own data. CI config
+  allows retries, but a test that passes only on retry is a failure, not a pass.
+- Audit-writing journeys (first: CUJ-03) cannot tear down their data: `audit_log` is
+  append-only (`audit_log_no_delete` trigger). This is by design. Locally, reset with
+  `supabase db reset`; CI starts from a fresh stack.
+- Do not change anything under `src/` in an E2E PR. If a test exposes an app bug, report it
+  separately; do not fix it inside the test PR.
+- When reviewing E2E changes: check the asserted oracle against TEST_PLAN §4 and the
+  actual `src/` behavior (SPEC citations), not against the PR description. Review the test
+  logic as a PR reviewer; do not rewrite it.
+
 ## Current phase context (update as phases complete)
 
 - Phase 0 (audit) complete 2026-07-01 — see `docs/DCR_Phase0_Audit.md`
