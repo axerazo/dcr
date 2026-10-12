@@ -925,7 +925,7 @@ export function RegisterView({ account }: RegisterViewProps) {
             </span>
             <button
               onClick={handleRelock}
-              className="px-3 py-1 text-xs bg-amber-100 border border-amber-300 rounded hover:bg-amber-200 text-amber-800"
+              className="px-3 py-1 text-xs bg-amber-100 border border-amber-300 rounded-sm hover:bg-amber-200 text-amber-800"
             >
               {'Relock Register'}
             </button>
@@ -954,7 +954,7 @@ export function RegisterView({ account }: RegisterViewProps) {
           </span>
           <button
             onClick={handleReopen}
-            className="px-3 py-1 text-xs bg-blue-700 text-white rounded hover:bg-blue-600"
+            className="px-3 py-1 text-xs bg-blue-700 text-white rounded-sm hover:bg-blue-600"
           >
             Reopen {MONTH_NAMES[activeMonth - 1]}
           </button>
@@ -969,7 +969,7 @@ export function RegisterView({ account }: RegisterViewProps) {
           </span>
           <button
             onClick={() => setShowUnlockDialog(true)}
-            className="px-3 py-1 text-xs bg-white border border-slate-400 rounded hover:bg-slate-50 text-slate-700"
+            className="px-3 py-1 text-xs bg-white border border-slate-400 rounded-sm hover:bg-slate-50 text-slate-700"
           >
             Unlock to Edit
           </button>
@@ -984,7 +984,7 @@ export function RegisterView({ account }: RegisterViewProps) {
           </span>
           <button
             onClick={() => setShowUnlockDialog(true)}
-            className="px-3 py-1 text-xs bg-white border border-slate-300 rounded hover:bg-slate-50 text-slate-700"
+            className="px-3 py-1 text-xs bg-white border border-slate-300 rounded-sm hover:bg-slate-50 text-slate-700"
           >
             Unlock to Edit
           </button>
@@ -1005,13 +1005,13 @@ export function RegisterView({ account }: RegisterViewProps) {
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setShowUnlockDialog(false)}
-                className="px-4 py-2 text-sm bg-slate-100 rounded hover:bg-slate-200 text-slate-700"
+                className="px-4 py-2 text-sm bg-slate-100 rounded-sm hover:bg-slate-200 text-slate-700"
               >
                 Cancel
               </button>
               <button
                 onClick={handleUnlockConfirm}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-sm hover:bg-blue-700"
               >
                 Unlock & Edit
               </button>
@@ -1081,7 +1081,7 @@ function InitRegisterForm({ month, year, onInit, isLoading }: InitRegisterFormPr
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-6 max-w-sm mx-auto shadow-sm">
+    <div className="bg-white border border-slate-200 rounded-lg p-6 max-w-sm mx-auto shadow-xs">
       <h2 className="text-base font-semibold text-slate-800 mb-1">
         Initialize {monthName} {year}
       </h2>
@@ -1099,14 +1099,14 @@ function InitRegisterForm({ month, year, onInit, isLoading }: InitRegisterFormPr
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="$0.00"
-            className="w-full border border-slate-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+            className="w-full border border-slate-300 rounded-sm px-3 py-2 text-sm focus:outline-hidden focus:border-blue-400"
             autoFocus
           />
         </div>
         <button
           type="submit"
           disabled={isLoading || !value.trim()}
-          className="w-full py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+          className="w-full py-2 bg-blue-600 text-white text-sm rounded-sm hover:bg-blue-700 disabled:opacity-50"
         >
           {isLoading ? 'Creating…' : 'Create Register'}
         </button>
@@ -1146,7 +1146,7 @@ function MismatchPrompt({
   const diff = Math.abs(closingBalance - nextOpeningBalance)
 
   return (
-    <div className="mx-4 my-2 bg-amber-50 border border-amber-300 rounded-lg p-4 shadow-sm">
+    <div className="mx-4 my-2 bg-amber-50 border border-amber-300 rounded-lg p-4 shadow-xs">
       <p className="text-sm text-amber-800 mb-1">
         <span className="font-semibold">⚠️ Opening balance mismatch</span>
       </p>
@@ -1158,7 +1158,7 @@ function MismatchPrompt({
         a <span className="font-semibold tabular-nums">{formatCurrency(diff)}</span> difference.
       </p>
       {archivedBlocked && (
-        <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-2">
+        <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-sm px-3 py-2 mb-2">
           {nextMonthLabel} is archived and cannot be updated. Reopen {nextMonthLabel} first,
           then apply this change.
         </p>
@@ -1166,7 +1166,7 @@ function MismatchPrompt({
       <div className="flex flex-col gap-2">
         <button
           onClick={onUseCleared}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 font-medium text-left"
+          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-sm hover:bg-blue-700 font-medium text-left"
         >
           Use {monthLabel}'s closing balance — {formatCurrency(closingBalance)}
         </button>
@@ -1174,7 +1174,7 @@ function MismatchPrompt({
           <button
             onClick={() => onKeepOpening(keepReason.trim())}
             disabled={!keepReason.trim()}
-            className="px-4 py-2 text-sm bg-white border border-amber-400 text-amber-800 rounded hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed text-left"
+            className="px-4 py-2 text-sm bg-white border border-amber-400 text-amber-800 rounded-sm hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed text-left"
           >
             Keep {nextMonthLabel}'s opening balance — {formatCurrency(nextOpeningBalance)}
           </button>
@@ -1186,12 +1186,12 @@ function MismatchPrompt({
             onChange={(e) => setKeepReason(e.target.value)}
             placeholder="Explain why the opening balance differs…"
             rows={2}
-            className="w-full text-sm border border-amber-300 rounded px-3 py-1.5 bg-white focus:outline-none focus:border-amber-500 resize-none"
+            className="w-full text-sm border border-amber-300 rounded-sm px-3 py-1.5 bg-white focus:outline-hidden focus:border-amber-500 resize-none"
           />
         </div>
         <button
           onClick={() => setExplainVisible((v) => !v)}
-          className="px-4 py-2 text-sm bg-white border border-slate-200 text-slate-500 rounded hover:bg-slate-50 text-left"
+          className="px-4 py-2 text-sm bg-white border border-slate-200 text-slate-500 rounded-sm hover:bg-slate-50 text-left"
         >
           Explain the difference
         </button>
@@ -1232,7 +1232,7 @@ function ClosePromptHappy({
   onDismiss,
 }: ClosePromptHappyProps) {
   return (
-    <div className="mx-4 my-2 bg-green-50 border border-green-200 rounded-lg p-4 shadow-sm">
+    <div className="mx-4 my-2 bg-green-50 border border-green-200 rounded-lg p-4 shadow-xs">
       <p className="text-sm text-green-800 mb-1">
         <span className="font-semibold">✅ All {monthLabel} transactions are cleared.</span>
       </p>
@@ -1252,14 +1252,14 @@ function ClosePromptHappy({
         <button
           onClick={onDismiss}
           disabled={isClosing}
-          className="px-4 py-1.5 text-sm bg-white border border-green-300 text-green-700 rounded hover:bg-green-50 disabled:opacity-50"
+          className="px-4 py-1.5 text-sm bg-white border border-green-300 text-green-700 rounded-sm hover:bg-green-50 disabled:opacity-50"
         >
           Not Yet
         </button>
         <button
           onClick={onClose}
           disabled={isClosing}
-          className="px-4 py-1.5 text-sm bg-green-700 text-white rounded hover:bg-green-800 disabled:opacity-50 font-medium"
+          className="px-4 py-1.5 text-sm bg-green-700 text-white rounded-sm hover:bg-green-800 disabled:opacity-50 font-medium"
         >
           {isClosing ? 'Archiving…' : `Close & Archive ${monthLabel}`}
         </button>
@@ -1294,7 +1294,7 @@ function ClosePromptUnhappy({
   const diff = Math.abs(closingBalance - nextOpeningBalance)
 
   return (
-    <div className="mx-4 my-2 bg-amber-50 border border-amber-300 rounded-lg p-4 shadow-sm">
+    <div className="mx-4 my-2 bg-amber-50 border border-amber-300 rounded-lg p-4 shadow-xs">
       <p className="text-sm text-amber-800 mb-2">
         All {monthLabel} transactions are cleared, but there's a{' '}
         <span className="font-semibold tabular-nums">{formatCurrency(diff)}</span> difference
@@ -1307,7 +1307,7 @@ function ClosePromptUnhappy({
       <div className="flex flex-col gap-2 mt-3">
         <button
           onClick={onUseClosing}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 font-medium text-left"
+          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-sm hover:bg-blue-700 font-medium text-left"
         >
           Use {monthLabel}'s closing balance — {formatCurrency(closingBalance)}
         </button>
@@ -1320,19 +1320,19 @@ function ClosePromptUnhappy({
             onChange={(e) => setKeepReason(e.target.value)}
             placeholder="Explain why the opening balance differs…"
             rows={2}
-            className="w-full text-sm border border-amber-300 rounded px-3 py-1.5 bg-white focus:outline-none focus:border-amber-500 resize-none"
+            className="w-full text-sm border border-amber-300 rounded-sm px-3 py-1.5 bg-white focus:outline-hidden focus:border-amber-500 resize-none"
           />
           <button
             onClick={() => onKeepOpening(keepReason.trim())}
             disabled={!keepReason.trim()}
-            className="px-4 py-2 text-sm bg-white border border-amber-400 text-amber-800 rounded hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed text-left"
+            className="px-4 py-2 text-sm bg-white border border-amber-400 text-amber-800 rounded-sm hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed text-left"
           >
             Keep {nextMonthLabel}'s opening balance — {formatCurrency(nextOpeningBalance)}
           </button>
         </div>
         <button
           disabled
-          className="px-4 py-2 text-sm bg-white border border-slate-200 text-slate-400 rounded cursor-not-allowed text-left"
+          className="px-4 py-2 text-sm bg-white border border-slate-200 text-slate-400 rounded-sm cursor-not-allowed text-left"
           title="AI gap explanation — coming in Phase 2"
         >
           Explain the difference

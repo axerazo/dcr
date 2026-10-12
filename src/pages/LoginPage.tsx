@@ -91,7 +91,7 @@ export function LoginPage() {
               onChange={(e) => setMfaCode(e.target.value)}
               placeholder="000000"
               maxLength={6}
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-center text-2xl tracking-widest outline-none focus:border-blue-500"
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-center text-2xl tracking-widest outline-hidden focus:border-blue-500"
               autoFocus
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -127,7 +127,7 @@ export function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500"
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm outline-hidden focus:border-blue-500"
               autoComplete="email"
             />
           </div>
@@ -142,7 +142,7 @@ export function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500"
+              className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm outline-hidden focus:border-blue-500"
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
               minLength={isSignUp ? 12 : undefined}
             />

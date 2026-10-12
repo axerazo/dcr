@@ -85,7 +85,7 @@ export function OpeningBalanceModal({ accountId, onComplete, onCancel }: Opening
               type="date"
               value={asOfDate}
               onChange={(e) => setAsOfDate(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-hidden focus:border-blue-500"
             />
           </div>
 
@@ -99,7 +99,7 @@ export function OpeningBalanceModal({ accountId, onComplete, onCancel }: Opening
               value={balance}
               onChange={(e) => handleBalanceInput(e.target.value)}
               placeholder="0.00"
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 font-mono"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-hidden focus:border-blue-500 font-mono"
               autoFocus
             />
             <p className="text-xs text-slate-400 mt-1">

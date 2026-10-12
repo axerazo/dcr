@@ -17,18 +17,18 @@ export default function App() {
           <ol className="space-y-3 text-sm text-slate-700 list-decimal list-inside">
             <li>
               Create a free project at{' '}
-              <span className="font-mono bg-slate-100 px-1 rounded">supabase.com</span>
+              <span className="font-mono bg-slate-100 px-1 rounded-sm">supabase.com</span>
             </li>
             <li>
               Go to <strong>Settings → API</strong> and copy your Project URL and anon key
             </li>
             <li>
-              Copy <span className="font-mono bg-slate-100 px-1 rounded">.env.example</span> to{' '}
-              <span className="font-mono bg-slate-100 px-1 rounded">.env.local</span> and fill in the values
+              Copy <span className="font-mono bg-slate-100 px-1 rounded-sm">.env.example</span> to{' '}
+              <span className="font-mono bg-slate-100 px-1 rounded-sm">.env.local</span> and fill in the values
             </li>
             <li>
               Paste the contents of{' '}
-              <span className="font-mono bg-slate-100 px-1 rounded">supabase/migrations/001_initial_schema.sql</span>{' '}
+              <span className="font-mono bg-slate-100 px-1 rounded-sm">supabase/migrations/001_initial_schema.sql</span>{' '}
               into the Supabase SQL Editor and run it
             </li>
             <li>Restart the dev server</li>

@@ -173,13 +173,13 @@ function SuggestionCard({
             <div className="flex gap-2 mt-2">
               <button
                 onClick={onAccept}
-                className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 font-medium transition-colors"
+                className="px-3 py-1 text-xs bg-green-600 text-white rounded-sm hover:bg-green-700 font-medium transition-colors"
               >
                 Accept
               </button>
               <button
                 onClick={onIgnore}
-                className="px-3 py-1 text-xs bg-slate-100 text-slate-600 rounded hover:bg-slate-200 font-medium transition-colors"
+                className="px-3 py-1 text-xs bg-slate-100 text-slate-600 rounded-sm hover:bg-slate-200 font-medium transition-colors"
               >
                 Ignore
               </button>
@@ -393,13 +393,13 @@ export function ReconciliationPanel({
                 <div className="flex gap-2">
                   <button
                     onClick={handleAcceptAll}
-                    className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 font-medium transition-colors"
+                    className="px-3 py-1 text-xs bg-green-600 text-white rounded-sm hover:bg-green-700 font-medium transition-colors"
                   >
                     Accept All
                   </button>
                   <button
                     onClick={handleIgnoreAll}
-                    className="px-3 py-1 text-xs bg-slate-200 text-slate-600 rounded hover:bg-slate-300 font-medium transition-colors"
+                    className="px-3 py-1 text-xs bg-slate-200 text-slate-600 rounded-sm hover:bg-slate-300 font-medium transition-colors"
                   >
                     Ignore All
                   </button>
