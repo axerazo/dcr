@@ -91,7 +91,7 @@ export function AccountSetupModal({ userId, onClose, onAccountCreated }: Account
               onChange={(e) => setNickname(e.target.value)}
               placeholder='e.g. "TD Bank — Main Checking"'
               maxLength={50}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-hidden focus:border-blue-500"
               autoFocus
             />
           </div>
@@ -103,7 +103,7 @@ export function AccountSetupModal({ userId, onClose, onAccountCreated }: Account
               value={bankName}
               onChange={(e) => setBankName(e.target.value)}
               placeholder='e.g. "TD Bank"'
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-hidden focus:border-blue-500"
             />
           </div>
 
@@ -112,7 +112,7 @@ export function AccountSetupModal({ userId, onClose, onAccountCreated }: Account
             <select
               value={accountType}
               onChange={(e) => setAccountType(e.target.value as AccountType)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-hidden focus:border-blue-500"
             >
               <option value="checking">Checking</option>
               <option value="savings">Savings</option>
@@ -129,7 +129,7 @@ export function AccountSetupModal({ userId, onClose, onAccountCreated }: Account
               onChange={(e) => setRoutingNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
               placeholder="••••••••• (9 digits)"
               maxLength={9}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 font-mono"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-hidden focus:border-blue-500 font-mono"
             />
             <p className="text-xs text-slate-400 mt-0.5">Encrypted at rest — shown masked in UI</p>
           </div>
@@ -144,7 +144,7 @@ export function AccountSetupModal({ userId, onClose, onAccountCreated }: Account
               onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 17))}
               placeholder="•••••••••• (8–17 digits)"
               maxLength={17}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 font-mono"
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-hidden focus:border-blue-500 font-mono"
             />
             <p className="text-xs text-slate-400 mt-0.5">Encrypted at rest — shown masked in UI</p>
           </div>

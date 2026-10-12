@@ -39,7 +39,7 @@ export function AppPage() {
             <select
               value={selectedAccount?.id ?? ''}
               onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="text-xs bg-slate-800 text-slate-200 border border-slate-600 rounded px-2 py-1 outline-none"
+              className="text-xs bg-slate-800 text-slate-200 border border-slate-600 rounded-sm px-2 py-1 outline-hidden"
             >
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>{a.nickname}</option>
