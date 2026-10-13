@@ -226,7 +226,7 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
             onChange={(e) => setEditing({ ...editing, check_number: e.target.value })}
             onBlur={handleBlur}
             onFocus={handleFocus}
-            className="w-full bg-transparent border-b border-blue-400 outline-none text-center"
+            className="w-full bg-transparent border-b border-blue-400 outline-hidden text-center"
             placeholder="#"
             maxLength={10}
           />
@@ -244,7 +244,7 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
             onChange={(e) => setEditing({ ...editing, date: e.target.value })}
             onBlur={handleBlur}
             onFocus={handleFocus}
-            className="w-full bg-transparent border-b border-blue-400 outline-none text-xs"
+            className="w-full bg-transparent border-b border-blue-400 outline-hidden text-xs"
           />
         ) : (
           <span className="text-xs tabular-nums">
@@ -264,7 +264,7 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
             onFocus={handleFocus}
             suggestions={descSuggestions}
             onAccept={(val) => setEditing((s) => s ? { ...s, description: val } : s)}
-            className="w-full bg-transparent border-b border-blue-400 outline-none"
+            className="w-full bg-transparent border-b border-blue-400 outline-hidden"
             maxLength={255}
             autoFocus
           />
@@ -344,7 +344,7 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
             onBlur={handleBlur}
             onFocus={handleFocus}
             disabled={!!editing.credit}
-            className="w-full bg-transparent border-b border-blue-400 outline-none text-right tabular-nums disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-full bg-transparent border-b border-blue-400 outline-hidden text-right tabular-nums disabled:opacity-30 disabled:cursor-not-allowed"
             placeholder="0.00"
           />
         ) : (
@@ -364,7 +364,7 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
             onBlur={handleBlur}
             onFocus={handleFocus}
             disabled={!!editing.debit}
-            className="w-full bg-transparent border-b border-blue-400 outline-none text-right tabular-nums disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-full bg-transparent border-b border-blue-400 outline-hidden text-right tabular-nums disabled:opacity-30 disabled:cursor-not-allowed"
             placeholder="0.00"
           />
         ) : (
@@ -396,7 +396,7 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
             onFocus={handleFocus}
             suggestions={notesSuggestions}
             onAccept={(val) => setEditing((s) => s ? { ...s, notes: val } : s)}
-            className="w-full bg-transparent border-b border-blue-400 outline-none text-xs text-slate-500"
+            className="w-full bg-transparent border-b border-blue-400 outline-hidden text-xs text-slate-500"
             placeholder="Notes / Confirmation number..."
           />
         ) : (
@@ -414,7 +414,7 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
               onChange={(e) => setEditing({ ...editing, scheduled_date: e.target.value })}
               onBlur={handleBlur}
               onFocus={handleFocus}
-              className="w-full bg-transparent border-b border-blue-400 outline-none text-xs"
+              className="w-full bg-transparent border-b border-blue-400 outline-hidden text-xs"
             />
             {display.scheduled_date && (
               <button
@@ -648,7 +648,7 @@ export function NewTransactionRow({
               if (e.key === 'Enter') deactivate()
               if (e.key === 'Escape') { setConfirmDiscard(false); setTimeout(() => descRef.current?.focus(), 0) }
             }}
-            className="px-3 py-1 mr-2 bg-amber-600 text-white text-xs rounded hover:bg-amber-700"
+            className="px-3 py-1 mr-2 bg-amber-600 text-white text-xs rounded-sm hover:bg-amber-700"
           >
             Yes, discard
           </button>
@@ -660,7 +660,7 @@ export function NewTransactionRow({
                 setTimeout(() => descRef.current?.focus(), 0)
               }
             }}
-            className="px-3 py-1 bg-slate-200 text-slate-700 text-xs rounded hover:bg-slate-300"
+            className="px-3 py-1 bg-slate-200 text-slate-700 text-xs rounded-sm hover:bg-slate-300"
           >
             No, keep editing
           </button>
@@ -669,11 +669,11 @@ export function NewTransactionRow({
     )
   }
 
-  const base = 'w-full bg-white border rounded px-1 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-colors'
+  const base = 'w-full bg-white border rounded-sm px-1 text-xs outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-colors'
   const err  = debitCreditError ? ' border-red-400' : ' border-slate-200'
 
   return (
-    <tr ref={rowRef} className="border-b border-blue-300 bg-blue-50/70 outline outline-1 outline-blue-200">
+    <tr ref={rowRef} className="border-b border-blue-300 bg-blue-50/70 outline-solid outline-1 outline-blue-200">
       {/* Check # */}
       <td className="px-2 py-1.5 w-16">
         <input
@@ -848,14 +848,14 @@ export function NewTransactionRow({
         <button
           onClick={() => handleSubmit()}
           title="Save and add another (Enter)"
-          className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+          className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-sm hover:bg-blue-700"
         >
           Save
         </button>
         <button
           onClick={handleEscape}
           title="Cancel (Esc)"
-          className="px-2 py-0.5 bg-slate-200 text-slate-700 text-xs rounded hover:bg-slate-300"
+          className="px-2 py-0.5 bg-slate-200 text-slate-700 text-xs rounded-sm hover:bg-slate-300"
         >
           Cancel
         </button>

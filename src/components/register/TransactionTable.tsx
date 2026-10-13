@@ -80,7 +80,7 @@ export function TransactionTable({
                     setOpeningBalanceDraft(String(register.opening_balance))
                     setEditingOpeningBalance(true)
                   }}
-                  className="ml-2 opacity-0 group-hover/ob:opacity-40 hover:!opacity-100 transition-opacity text-slate-500 hover:text-slate-800"
+                  className="ml-2 opacity-0 group-hover/ob:opacity-40 hover:opacity-100! transition-opacity text-slate-500 hover:text-slate-800"
                   title="Edit opening balance"
                   aria-label="Edit opening balance"
                 >
@@ -101,7 +101,7 @@ export function TransactionTable({
                       if (e.key === 'Enter') handleOpeningBalanceSave()
                       if (e.key === 'Escape') setEditingOpeningBalance(false)
                     }}
-                    className="w-28 border border-blue-400 rounded px-1 text-right bg-white outline-none"
+                    className="w-28 border border-blue-400 rounded-sm px-1 text-right bg-white outline-hidden"
                     autoFocus
                   />
                   <button
