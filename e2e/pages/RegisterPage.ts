@@ -33,9 +33,10 @@ export class RegisterPage {
         this.cancelButton = this.page.getByRole('button', { name: 'Cancel' })
     }
 
-    row(description: string): { balance: Locator } {
+    row(description: string): { locator: Locator; balance: Locator } {
         const row = this.page.getByRole('row', { name: description })
         return {
+            locator: row,
             balance: row.getByRole('cell').nth(COL.balance),
         }
     }
@@ -64,5 +65,17 @@ export class RegisterPage {
         await this.saveButton.click()
         await this.page.getByRole('row', { name: tx.description }).waitFor() // saved row has appeared
         await this.cancelButton.click() // Close the add transaction row
+    }
+
+    async voidTransaction(description: string): Promise<string> {
+        const row = this.page.getByRole('row', { name: description })
+        let dialogInfo = ''
+        this.page.once('dialog', async (dialog) => {
+            dialogInfo = `${dialog.type()}: ${dialog.message()}`
+            await dialog.accept()
+        })
+        await row.getByRole('button', { name: '○' }).click()
+        await row.getByRole('button', { name: 'void Void' }).click()
+        return dialogInfo
     }
 }
