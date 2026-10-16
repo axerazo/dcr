@@ -32,6 +32,5 @@ jobs:
           # Full URL: `gh pr view` only accepts a number, an https URL, or a branch name
           prompt: '/code-review:code-review --comment https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
           # TEMPORARY debugging: logs are public on a public repo. Remove after one confirmed run.
-          show_full_output: true
           claude_args: |
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
