@@ -83,7 +83,7 @@ Priority tiers: **P0** = smoke-critical (must pass before any merge), **P1** = c
 | --- | --- | --- | --- | --- |
 | CUJ-01 | Sign in and land on the current month's register | P0 | `e2e/setup/auth.setup.ts` + `e2e/01-auth.spec.ts` | Wave 1 |
 | CUJ-02 | Record a transaction and see running balances update | P0 | `e2e/02-record-transaction.spec.ts` | Wave 1 |
-| CUJ-03 | Void a transaction — strikethrough renders, balances unchanged | P0 | `e2e/03-void-transaction.spec.ts` | Wave 1 |
+| CUJ-03 | Void a transaction — strikethrough renders, voided amount drops out of balances | P0 | `e2e/03-void-transaction.spec.ts` | Wave 1 |
 | CUJ-04 | Month rollover — register auto-created, opening balance live-carries | P0 | `e2e/04-auto-carry.spec.ts` | Wave 2 |
 | CUJ-05 | Transaction status lifecycle — pending → cleared; available vs current balances diverge and reconverge | P1 | `e2e/05-status-lifecycle.spec.ts` | Wave 2 |
 | CUJ-06 | Close & Archive — ready-to-close prompt, soft close, lock banner, prior-month hard-close cascade | P1 | `e2e/06-close-archive.spec.ts` | Wave 2 |
@@ -120,14 +120,20 @@ through the assembled UI — one invariant, two layers of the pyramid.
 **Traceability:** SPEC §9 Formulas A/C/D.
 
 ### CUJ-03 — Void a transaction (P0)
-**Goal:** User voids an erroneous entry; the record stays visible but leaves every balance
-untouched.
-**Preconditions:** Register with three transactions and known balances.
-**Path:** Void the middle transaction → confirm in the prompt.
-**Oracle:** Row renders struck-through with dimmed styling; its balance cell empties; all
-other rows' balances and the header balances are unchanged — the void-injection metamorphic
-property, verified through the UI. Audit expectation noted for a later API-level check.
-**Traceability:** SPEC §10 Void Rule (incl. 2026-07 scope note), §9 Formula D.
+**Goal:** User voids an erroneous entry; the record stays visible but no longer counts
+toward any balance.
+**Preconditions:** Register with three debits — one cleared, one recorded, one pending — and
+known balances.
+**Path:** Void the middle (recorded) transaction → accept the browser confirmation dialog
+(`window.confirm`).
+**Oracle:** Row renders struck-through with dimmed styling; its balance cell empties (`—`);
+every other balance equals what the ledger would show had the entry never existed — later
+rows' running balances and the Actual balance move by exactly the voided amount (a voided
+debit raises them), and Available is unchanged here only because the voided entry was
+`recorded` (Formula B counts cleared only). This is the void-injection metamorphic property,
+verified through the UI. Audit expectation noted for a later API-level check (see the §6
+amendment).
+**Traceability:** SPEC §10 Void Rule (incl. 2026-07 scope note), §9 Formulas A/B/C/D.
 
 ### CUJ-04 — Month rollover with auto-carry (P0)
 **Goal:** The Phase 1.5 flagship behavior: navigating to a month with no register silently
@@ -238,8 +244,17 @@ the oracle (not incidental DOM), and is traceable here by CUJ number.
 > `NO ACTION` and the `audit_log_no_delete` trigger rejects DELETE outright, so
 > once an audit row exists that user's data is permanently undeletable. This is
 > the append-only invariant working as designed, not a defect. CI is unaffected
-> (fresh stack per run); locally, `supabase db reset` is the reset path. First
-> affects CUJ-03.
+> (fresh stack per run); locally, `supabase db reset` is the reset path.
+>
+> *Status at CUJ-03:* the amendment does not yet apply to CUJ-03. Voiding in the UI
+> writes no `audit_log` row — observed live (`audit_log` empty after a void, and the
+> user's data tears down normally) and in the source (`handleVoid` never calls
+> `writeAuditEntry`) — although the SPEC §10 Void Rule requires an audit entry. That
+> gap is an app discrepancy tracked separately, not fixed in the test PR. The app
+> today writes audit rows for month close/unlock, opening-balance decisions and
+> reconciliation (e.g. CUJ-06, -07, -08, -11), so those journeys are where the
+> amendment first applies. If void auditing is implemented, CUJ-03 joins them and its
+> teardown expectation must be revisited in the same change.
 
 ---
 *Maintained alongside SPEC.md; update this plan in the same PR as any journey change.*

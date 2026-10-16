@@ -93,9 +93,11 @@ layer (formula correctness, float boundaries) belongs in Vitest, not here.
 - Definition of done (TEST_PLAN §6): passes 3x consecutively with no retries, locally and in
   CI; asserts the oracle, not incidental DOM; creates and tears down its own data. CI config
   allows retries, but a test that passes only on retry is a failure, not a pass.
-- Audit-writing journeys (first: CUJ-03) cannot tear down their data: `audit_log` is
-  append-only (`audit_log_no_delete` trigger). This is by design. Locally, reset with
-  `supabase db reset`; CI starts from a fresh stack.
+- Audit-writing journeys cannot tear down their data: `audit_log` is append-only
+  (`audit_log_no_delete` trigger). This is by design. Locally, reset with
+  `supabase db reset`; CI starts from a fresh stack. Today those are the journeys that
+  close/unlock a month, resolve an opening-balance mismatch or run reconciliation
+  (e.g. CUJ-06, -07, -08, -11). CUJ-03's UI void writes no audit row (see TEST_PLAN §6).
 - Do not change anything under `src/` in an E2E PR. If a test exposes an app bug, report it
   separately; do not fix it inside the test PR.
 - When reviewing E2E changes: check the asserted oracle against TEST_PLAN §4 and the
