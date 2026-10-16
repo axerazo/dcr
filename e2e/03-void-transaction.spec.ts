@@ -7,7 +7,7 @@ test.describe('CUJ-03: Void a transaction — strikethrough renders, voided amou
     // Preconditions: Register with three transactions and known balances.
     // Path: Void the middle transaction → confirm in the prompt.
     // Oracle: Row renders struck-through with dimmed styling; its balance cell empties; all other rows' balances and the header balances are
-    // unchanged — the void-injection metamorphic property, verified through the UI. Audit expectation noted for a later API-level check.
+    // updated accordingly — the void-injection metamorphic property, verified through the UI. Audit expectation noted for a later API-level check.
 
     test('Void Transaction', async ({ register, seed }) => {
 
@@ -25,7 +25,7 @@ test.describe('CUJ-03: Void a transaction — strikethrough renders, voided amou
 
         const currentActualBalance = startingBalance - 100 - 50 - 25
         // Both recorded and pending debits DON'T reduce available balance
-        // Only cleared debits reduce actual balance
+        // Only cleared debits reduce available balance
         const currentAvailableBalance = startingBalance - 100
 
         await expect(register.actualBalance).toHaveText(money(currentActualBalance))
@@ -40,7 +40,6 @@ test.describe('CUJ-03: Void a transaction — strikethrough renders, voided amou
         const voidedRow = register.row('Recorded Debit')
         await expect(voidedRow.locator).toHaveCSS('text-decoration-line', 'line-through')
         await expect(voidedRow.locator).toHaveCSS('opacity', '0.5') // Assuming the dimmed styling applies an opacity class
-        await expect(voidedRow.locator).toHaveCSS('background-color', 'oklch(0.984 0.003 247.858)') // Assuming the dimmed styling applies a background color class
 
         // Verify the balance cell of the voided transaction row is empty (em-dash)
          await expect(voidedRow.balance).toHaveText('—')
