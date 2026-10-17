@@ -250,10 +250,12 @@ the oracle (not incidental DOM), and is traceable here by CUJ number.
 > writes no `audit_log` row — observed live (`audit_log` empty after a void, and the
 > user's data tears down normally) and in the source (`handleVoid` never calls
 > `writeAuditEntry`) — although the SPEC §10 Void Rule requires an audit entry. That
-> gap is an app discrepancy tracked separately, not fixed in the test PR. The app
-> today writes audit rows for month close/unlock, opening-balance decisions and
-> reconciliation (e.g. CUJ-06, -07, -08, -11), so those journeys are where the
-> amendment first applies. If void auditing is implemented, CUJ-03 joins them and its
+> gap is an app discrepancy tracked in [#12](https://github.com/axerazo/dcr/issues/12),
+> not fixed in the test PR. The app today writes audit rows for month close/unlock, opening-balance
+> decisions and reconciliation (e.g. CUJ-06, -07, -08, -11), so those journeys are where the
+> amendment first applies. Status transitions (CUJ-05) are not audited today either, tracked in
+> [#13](https://github.com/axerazo/dcr/issues/13); if that is fixed, CUJ-05 joins this set.
+> If void auditing is implemented, CUJ-03 joins them and its
 > teardown expectation must be revisited in the same change.
 
 ---
