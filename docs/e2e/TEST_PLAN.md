@@ -19,6 +19,20 @@ E2E tests are the most expensive layer of the pyramid, so this suite deliberatel
 journeys exist to catch what unit tests cannot: wiring, persistence, navigation, and
 lifecycle-effect behavior across real page interactions.
 
+### Pairing sessions (Alex writes the test logic)
+
+- Alex writes all test logic: `e2e/*.spec.ts` steps, assertions, and oracle choices.
+  Do not create or edit spec files unless Alex asks for that edit in the current
+  message. When you see a problem, describe it and show the proposed diff in chat.
+- You may write and change infrastructure when asked: `e2e/fixtures/`, `e2e/support/`,
+  `e2e/setup/`, `playwright.config.ts`, `scripts/`, and CI config.
+- Verify, don't assert. Check claims about app behavior against `src/`, `SPEC.md`,
+  `supabase/migrations/`, or a live run, and cite file and line. Never answer from memory.
+- A clean exit code is not proof. A passing test must exercise the thing being claimed.
+  Where practical, show that it fails when the behavior is broken.
+- Report what you actually ran and saw, including failures. No "should work".
+- If Alex is wrong, say so plainly and show the evidence.
+
 **Out of scope for E2E:** formula correctness across edge-case data (golden-master suite),
 floating-point boundaries (unit tests), Supabase RLS policy correctness (Phase 2/3 concern,
 tested via API-level tests when the Edge Function proxy lands), visual regression, and
