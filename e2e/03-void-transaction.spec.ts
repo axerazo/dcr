@@ -18,7 +18,7 @@ test.describe('CUJ-03: Void a transaction — strikethrough renders, voided amou
     // Traceability: SPEC §10 Void Rule (incl. 2026-07 scope note), §9 Formulas A/B/C/D.
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    test('Void Transaction', async ({ register, seed }) => {
+    test('Void a recorded debit; later balances and Actual rise by the voided amount', async ({ register, seed }) => {
 
         const startingBalance = seed.openingBalance
 
@@ -48,14 +48,13 @@ test.describe('CUJ-03: Void a transaction — strikethrough renders, voided amou
         // Verify the voided transaction row renders struck-through and dimmed
         const voidedRow = register.row('Recorded Debit')
         await expect(voidedRow.locator).toHaveCSS('text-decoration-line', 'line-through')
-        await expect(voidedRow.locator).toHaveCSS('opacity', '0.5') // Assuming the dimmed styling applies an opacity class
+        await expect(voidedRow.locator).toHaveCSS('opacity', '0.5') // statusRowClass('void') applies opacity-50 (src/components/ui/StatusIcon.tsx)
 
         // Verify the balance cell of the voided transaction row is empty (em-dash)
         await expect(voidedRow.balance).toHaveText('—')
 
         // Verify balances are correct after voiding the transaction
         await expect(register.row('Cleared Debit').balance).toHaveText(money(startingBalance - 100))
-        await expect(register.row('Recorded Debit').balance).toHaveText('—') // Balance cell should be empty for voided transaction
         await expect(register.row('Pending Debit').balance).toHaveText(money(currentRunningBalanceAfterVoid))
 
         await expect(register.actualBalance).toHaveText(money(currentRunningBalanceAfterVoid))
