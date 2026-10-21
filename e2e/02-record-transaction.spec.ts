@@ -16,7 +16,7 @@ test.describe('CUJ-02: Record a transaction and see running balances update', ()
     // Traceability: SPEC §9 Formulas A/C/D.
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    test('Verify multiple transaction recordings & verify all balance updates with correct running balances', async ({ register, seed }) => {
+    test('Record a debit then a credit; running and header balances follow Formula D', async ({ register, seed }) => {
         const afterDebit = seed.openingBalance - 100
         const afterCredit = afterDebit + 200
 
