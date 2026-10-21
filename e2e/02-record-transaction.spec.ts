@@ -1,26 +1,29 @@
 import { test, expect } from './fixtures/register'
 import { money } from './support/money'
 
-test.describe('CUJ-02: existing user records a transaction and sees it in the register', () => {
+test.describe('CUJ-02: Record a transaction and see running balances update', () => {
 
-    // Oracle: Each new row shows the correct running balance; header Actual Balance equals opening − debit + credit. Same
-    // invariant the golden suite proves at unit level, now verified through the assembled UI — one invariant, two layers
-    // of the pyramid.
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Goal: The core write path: user adds a debit and a credit; on-screen balances reflect Formula D exactly.
+    //
+    // Preconditions: Authenticated; register with known opening balance and no transactions.
+    //
+    // Path: Add debit (date, description, amount) → observe row balance → add credit → observe.
+    //
+    // Oracle: Each new row shows the correct running balance; header Actual Balance equals opening − debit + credit. Same invariant the golden suite
+    // proves at unit level, now verified through the assembled UI — one invariant, two layers of the pyramid.
+    //
+    // Traceability: SPEC §9 Formulas A/C/D.
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    test('Add a cleared debit transaction & verify all balance updates with correct running balances', async ({ register, seed }) => {
-        const afterDebit = seed.openingBalance - 100
-
-        await register.addTransaction({ description: 'Test Transaction', status: 'Cleared', debit: 100 })
-
-        // Verify the balance column of the new transaction row shows the correct running balance, and that the header balances are updated accordingly
-        await expect(register.row('Test Transaction').balance).toHaveText(money(afterDebit))
-        await expect(register.actualBalance).toHaveText(money(afterDebit))
-        await expect(register.availableBalance).toHaveText(money(afterDebit))
-    })
-
-    test('Verify multiple transaction recordings & verify all balance updates with correct running balances', async ({ register, seed }) => {
+    test('Record a debit then a credit; running and header balances follow Formula D', async ({ register, seed }) => {
         const afterDebit = seed.openingBalance - 100
         const afterCredit = afterDebit + 200
+
+        // Precondition: known opening balance and no transactions — header balances equal the opening
+        await expect(register.openingBalance).toHaveText(money(seed.openingBalance))
+        await expect(register.actualBalance).toHaveText(money(seed.openingBalance))
+        await expect(register.availableBalance).toHaveText(money(seed.openingBalance))
 
         await register.addTransaction({ description: 'Test Transaction', status: 'Cleared', debit: 100 })
 
