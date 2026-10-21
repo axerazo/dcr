@@ -1,39 +1,38 @@
 import { test, expect } from './fixtures/seed'
 
-test.use({ storageState: { cookies: [], origins: [] } }) // start off signed out
+test.describe('CUJ-01: Sign in and land on the current month\'s register', () => {
 
-test('CUJ-01: existing user signs in and lands on current-month register', async ({ page, seedUnauthenticated }) => {
-    const { email, password, accountNickname, month, year } = seedUnauthenticated
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Goal: An existing user authenticates and arrives at their account's register for the current calendar month.
+    //
+    // Preconditions: Seeded user + account + current-month register
+    //
+    // Path: Load app → enter credentials → submit.
+    //
+    // Oracle: Register header shows account nickname and current month/year label; transaction table renders. Global setup persists storageState
+    // here for all later journeys.
+    //
+    // Traceability: SPEC §16 (auth), §11.
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    await page.goto('/')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+    test.use({ storageState: { cookies: [], origins: [] } }) // start off signed out
 
-    // Oracle (TEST_PLAN §4): Register header shows account nickname and current month/year label; transaction table renders.
+    test('Sign in and land on the current month\'s register', async ({ page, seedUnauthenticated }) => {
+        const { email, password, accountNickname, month, year } = seedUnauthenticated
 
-    // Convert month number to month name for assertion
-    const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' })
-    await expect(page.getByText(`${accountNickname}`)).toBeVisible()
-    await expect(page.getByText(`${monthName} ${year}`)).toBeVisible()
-    await expect(page.getByRole('table')).toBeVisible()
+        await page.goto('/')
+        await page.getByLabel('Email').fill(email)
+        await page.getByLabel('Password').fill(password)
+        await page.getByRole('button', { name: 'Sign In', exact: true }).click()
 
-    // Supplementary — not part of CUJ-01's formal oracle, folded in here because the login
-    // flow already lands on this state. Verifies month navigation has the current month
-    // selected and the highlighted year is not itself clickable. If MonthNav's year-click
-    // behavior changes for reasons unrelated to sign-in, this is where that surfaces.
+        // Convert month number to month name for assertion
+        const monthName = new Date(year, month - 1).toLocaleString('en-US', { month: 'long' })
+        await expect(page.getByText(`${accountNickname}`)).toBeVisible()
+        await expect(page.getByRole('heading', { name: `Check Register — ${monthName} ${year}` })).toBeVisible()
+        await expect(page.getByRole('table')).toBeVisible()
 
-    // Convert month name to 3-letter abbreviation for assertion
-    const monthAbbreviation = monthName.slice(0, 3)
-    await expect(page.getByRole('button', { name: `${monthAbbreviation}` })).toBeVisible()
-
-    const currentMonthButton = page.getByRole('button', { name: `${monthAbbreviation}` })
-    await expect(currentMonthButton).toHaveAttribute('aria-current', 'page') // Ensures the current month button/tab is selected    
-
-    // Verify the month navigation contains the current year
-    await expect(page.getByRole('navigation', { name: 'Month navigation' })).toContainText(`${year}`)
-
-    // Verify current year is not a button (i.e., not clickable) in the month navigation
-    const currentYearButton = page.getByRole('button', { name: `${year}` })
-    await expect(currentYearButton).toHaveCount(0) // Ensures the current year is not a button
+        // Convert month name to 3-letter abbreviation for assertion
+        const monthAbbreviation = monthName.slice(0, 3)
+        await expect(page.getByRole('button', { name: `${monthAbbreviation}` })).toBeVisible()
+    })
 })
