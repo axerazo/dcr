@@ -33,6 +33,9 @@ export class RegisterPage {
     readonly cancelButton: Locator
     readonly openingBalance: Locator
     readonly initializeContainer: Locator
+    readonly fullyReconciledBanner: Locator
+    readonly closeArchiveButton: Locator
+    readonly notYetButton: Locator
 
     constructor(private readonly page: Page) {
         this.signOutButton = this.page.getByRole('button', { name: 'Sign out' })
@@ -44,6 +47,9 @@ export class RegisterPage {
         this.cancelButton = this.page.getByRole('button', { name: 'Cancel' })
         this.openingBalance = this.page.getByRole('cell', { name: '$' })
         this.initializeContainer = this.page.getByRole('heading', { name: /^Initialize / })
+        this.fullyReconciledBanner = this.page.getByText('✅ Fully reconciled — all')
+        this.closeArchiveButton = this.page.getByRole('button', { name: /^Close & Archive / })
+        this.notYetButton = this.page.getByRole('button', { name: 'Not Yet' })
     }
 
     row(description: string): { locator: Locator; balance: Locator } {
@@ -126,7 +132,7 @@ export class RegisterPage {
     async updateTransactionStatus(description: string, newStatus: 'Recorded' | 'Cleared' | 'Pending' | 'Void'): Promise<void> {
         const row = this.page.getByRole('row', { name: description })
         await row.getByRole('button', { name: 'Pending' }).click()
-        await row.getByRole('button', { name: `${newStatus} ${newStatus}` }).click()
+        await row.getByRole('button', { name: `${newStatus} ${newStatus}` }).click({ timeout: 5000 })
         await row.getByRole('button', { name: `${newStatus}` }).waitFor()
     }
 }
