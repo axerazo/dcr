@@ -30,7 +30,7 @@ test.describe('CUJ-05: Transaction status lifecycle — pending → cleared; ava
 
         await register.addTransaction({ transactionDate: new Date(year, month - 1, 21), description: 'Pending Debit 1', status: 'Pending', debit: debit[0] })
         await register.addTransaction({ transactionDate: new Date(year, month - 1, 22), description: 'Cleared Debit', status: 'Cleared', debit: debit[1] })
-        await register.addTransaction({ transactionDate: new Date(year, month - 1, 24), description: 'Pending Debit 2', status: 'Recorded', credit: credit })
+        await register.addTransaction({ transactionDate: new Date(year, month - 1, 24), description: 'Lifecycle Credit', status: 'Recorded', credit: credit })
 
         const currentActualBalance = startingBalance - debit[0] - debit[1] + credit
         const currentAvailableBalance = startingBalance - debit[1]
@@ -47,7 +47,7 @@ test.describe('CUJ-05: Transaction status lifecycle — pending → cleared; ava
         await expect(register.availableBalance).toHaveText(money(nextCurrentAvailableBalance))
         await expect(register.closeArchiveButton).toBeHidden()
 
-        await register.updateTransactionStatus('Pending Debit 2', 'Pending')
+        await register.updateTransactionStatus('Lifecycle Credit', 'Pending')
 
         const lastCurrentActualBalance = startingBalance - debit[0] - debit[1] + credit
         const lastCurrentAvailableBalance = lastCurrentActualBalance - credit
@@ -56,12 +56,12 @@ test.describe('CUJ-05: Transaction status lifecycle — pending → cleared; ava
         await expect(register.actualBalance).toHaveText(money(lastCurrentActualBalance))
         await expect(register.availableBalance).toHaveText(money(lastCurrentAvailableBalance))
 
-        await register.updateTransactionStatus('Pending Debit 2', 'Cleared')
+        await register.updateTransactionStatus('Lifecycle Credit', 'Cleared')
 
-        const lastClearedTransaction = lastCurrentAvailableBalance + credit
+        const reconvergedAvailableBalance = lastCurrentActualBalance  // cleared: Available reconverges with Actual
 
         await expect(register.actualBalance).toHaveText(money(lastCurrentActualBalance))
-        await expect(register.availableBalance).toHaveText(money(lastClearedTransaction))
+        await expect(register.availableBalance).toHaveText(money(reconvergedAvailableBalance))
 
         await expect(register.fullyReconciledBanner).toBeVisible()
 

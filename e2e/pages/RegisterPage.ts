@@ -129,7 +129,7 @@ export class RegisterPage {
         return dialogInfo
     }
 
-    async updateTransactionStatus(description: string, newStatus: 'Recorded' | 'Cleared' | 'Pending' | 'Void'): Promise<void> {
+    async updateTransactionStatus(description: string, newStatus: 'Recorded' | 'Cleared' | 'Pending'): Promise<void> {
         const row = this.page.getByRole('row', { name: description })
 
         await row.getByTitle(/^Status: /).click()
