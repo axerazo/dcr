@@ -131,8 +131,9 @@ export class RegisterPage {
 
     async updateTransactionStatus(description: string, newStatus: 'Recorded' | 'Cleared' | 'Pending' | 'Void'): Promise<void> {
         const row = this.page.getByRole('row', { name: description })
-        await row.getByRole('button', { name: 'Pending' }).click()
+
+        await row.getByTitle(/^Status: /).click()
         await row.getByRole('button', { name: `${newStatus} ${newStatus}` }).click({ timeout: 5000 })
-        await row.getByRole('button', { name: `${newStatus}` }).waitFor()
+        await row.getByTitle(`Status: ${newStatus.toLowerCase()} — click to change`).waitFor()
     }
 }

@@ -30,7 +30,7 @@ test.describe('CUJ-05: Transaction status lifecycle — pending → cleared; ava
 
         await register.addTransaction({ transactionDate: new Date(year, month - 1, 21), description: 'Pending Debit 1', status: 'Pending', debit: debit[0] })
         await register.addTransaction({ transactionDate: new Date(year, month - 1, 22), description: 'Cleared Debit', status: 'Cleared', debit: debit[1] })
-        await register.addTransaction({ transactionDate: new Date(year, month - 1, 24), description: 'Pending Debit 2', status: 'Pending', credit: credit })
+        await register.addTransaction({ transactionDate: new Date(year, month - 1, 24), description: 'Pending Debit 2', status: 'Recorded', credit: credit })
 
         const currentActualBalance = startingBalance - debit[0] - debit[1] + credit
         const currentAvailableBalance = startingBalance - debit[1]
@@ -41,20 +41,27 @@ test.describe('CUJ-05: Transaction status lifecycle — pending → cleared; ava
         await register.updateTransactionStatus('Pending Debit 1', 'Cleared')
 
         const nextCurrentActualBalance = startingBalance - debit[0] - debit[1] + credit
-        const nextCurrentAvailableBalance = startingBalance - debit[0] - debit[1]
+        const nextCurrentAvailableBalance = nextCurrentActualBalance - credit
 
         await expect(register.actualBalance).toHaveText(money(nextCurrentActualBalance))
         await expect(register.availableBalance).toHaveText(money(nextCurrentAvailableBalance))
         await expect(register.closeArchiveButton).toBeHidden()
 
-        await register.updateTransactionStatus('Pending Debit 2', 'Cleared')
+        await register.updateTransactionStatus('Pending Debit 2', 'Pending')
 
         const lastCurrentActualBalance = startingBalance - debit[0] - debit[1] + credit
-        const lastCurrentAvailableBalance = lastCurrentActualBalance
+        const lastCurrentAvailableBalance = lastCurrentActualBalance - credit
         const monthName = new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'long' })
 
         await expect(register.actualBalance).toHaveText(money(lastCurrentActualBalance))
         await expect(register.availableBalance).toHaveText(money(lastCurrentAvailableBalance))
+
+        await register.updateTransactionStatus('Pending Debit 2', 'Cleared')
+
+        const lastClearedTransaction = lastCurrentAvailableBalance + credit
+
+        await expect(register.actualBalance).toHaveText(money(lastCurrentActualBalance))
+        await expect(register.availableBalance).toHaveText(money(lastClearedTransaction))
 
         await expect(register.fullyReconciledBanner).toBeVisible()
 
