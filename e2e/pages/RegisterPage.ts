@@ -33,6 +33,19 @@ export class RegisterPage {
     readonly cancelButton: Locator
     readonly openingBalance: Locator
     readonly initializeContainer: Locator
+    readonly archiveBanner: Locator
+    readonly fullyReconciledBanner: Locator
+    readonly transactionsCleared: Locator
+    readonly finalBalance: Locator
+    readonly nextOpeningBalanceBanner: Locator
+    readonly readyToCloseQuestion: Locator
+    readonly notYetButton: Locator
+    readonly closeArchiveButton: Locator
+    readonly registerClosedBanner: Locator
+    readonly reopenMonthButton: Locator
+    readonly archivedChangesBanner: Locator
+    readonly permanentlyClosedMessage: Locator
+    readonly unlockEdit: Locator
 
     constructor(private readonly page: Page) {
         this.signOutButton = this.page.getByRole('button', { name: 'Sign out' })
@@ -44,6 +57,19 @@ export class RegisterPage {
         this.cancelButton = this.page.getByRole('button', { name: 'Cancel' })
         this.openingBalance = this.page.getByRole('cell', { name: '$' })
         this.initializeContainer = this.page.getByRole('heading', { name: /^Initialize / })
+        this.archiveBanner = this.page.getByText(/ is archived — read-only\.$/)
+        this.fullyReconciledBanner = this.page.getByText('✅ Fully reconciled — all')
+        this.transactionsCleared = this.page.getByText(/ transactions are cleared\.$/)
+        this.finalBalance = this.page.getByText(/'s final balance is \$/)
+        this.readyToCloseQuestion = this.page.getByText(/^Ready to close .+\?$/)
+        this.notYetButton = this.page.getByRole('button', { name: 'Not Yet' })
+        this.registerClosedBanner = this.page.getByText('🔒 This register is closed — all entries are read-only', { exact: true })
+        this.closeArchiveButton = this.page.getByRole('button', { name: /^Close & Archive / })
+        this.reopenMonthButton = this.page.getByRole('button', { name: /^Reopen / })
+        this.archivedChangesBanner = this.page.getByText(/^⚠️ .+ is archived\. Changes to /)
+        this.permanentlyClosedMessage = this.page.getByText('🔒 Archived — permanently')
+        this.unlockEdit = this.page.getByRole('button', { name: 'Unlock to Edit' })
+        this.nextOpeningBalanceBanner = this.page.getByText(/\'s opening balance is/)
     }
 
     row(description: string): { locator: Locator; balance: Locator } {
@@ -123,10 +149,11 @@ export class RegisterPage {
         return dialogInfo
     }
 
-    async updateTransactionStatus(description: string, newStatus: 'Recorded' | 'Cleared' | 'Pending' | 'Void'): Promise<void> {
+    async updateTransactionStatus(description: string, newStatus: 'Recorded' | 'Cleared' | 'Pending'): Promise<void> {
         const row = this.page.getByRole('row', { name: description })
-        await row.getByRole('button', { name: 'Pending' }).click()
-        await row.getByRole('button', { name: `${newStatus} ${newStatus}` }).click()
-        await row.getByRole('button', { name: `${newStatus}` }).waitFor()
+
+        await row.getByTitle(/^Status: /).click()
+        await row.getByRole('button', { name: `${newStatus} ${newStatus}` }).click({ timeout: 5000 })
+        await row.getByTitle(`Status: ${newStatus.toLowerCase()} — click to change`).waitFor()
     }
 }
