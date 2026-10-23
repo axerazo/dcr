@@ -258,7 +258,7 @@ the oracle (not incidental DOM), and is traceable here by CUJ number.
 > `NO ACTION` and the `audit_log_no_delete` trigger rejects DELETE outright, so
 > once an audit row exists that user's data is permanently undeletable. This is
 > the append-only invariant working as designed, not a defect. CI is unaffected
-> (fresh stack per run); locally, `supabase db reset` is the reset path.
+> (fresh stack per run); locally, `npm run test:e2e:clean` (`supabase db reset`) is the reset path.
 >
 > *Status at CUJ-03:* the amendment does not yet apply to CUJ-03. Voiding in the UI
 > writes no `audit_log` row — observed live (`audit_log` empty after a void, and the

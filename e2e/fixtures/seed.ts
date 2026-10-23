@@ -254,24 +254,35 @@ async function authenticateContextAs(
  * all. That is a deliberate product invariant (SPEC §12 / CLAUDE.md rule 5),
  * not something to work around here.
  *
+ * The audit check runs before the delete because GoTrue does not surface the
+ * Postgres error: a blocked deleteUser comes back with the opaque message "{}", which
+ * would otherwise read as an unexplained teardown failure.
+ *
  * Never throws: a teardown failure must not mask or invent a test failure.
  */
 async function teardown(userId: string, email: string): Promise<void> {
   try {
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
-    if (!error) return
-
-    if (/audit_log/i.test(error.message)) {
+    const { count, error: auditError } = await supabaseAdmin
+      .from('audit_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+    if (!auditError && count) {
       console.warn(
-        `[e2e/seed] Left ${email} (${userId}) in the local database: audit_log rows ` +
-          'reference it and audit_log is append-only, so the cascade cannot run. ' +
-          'Expected for journeys that void/edit/close. Run `supabase db reset` to clear ' +
+        `[e2e/seed] Left ${email} (${userId}) in the local database: ${count} audit_log ` +
+          'row(s) reference it and audit_log is append-only, so the cascade cannot run. ' +
+          'Expected for journeys that void/edit/close. Run `npm run test:e2e:clean` to clear ' +
           'accumulated E2E users locally; CI always starts from a fresh stack.',
       )
       return
     }
 
-    console.warn(`[e2e/seed] Teardown of ${email} (${userId}) failed: ${error.message}`)
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+    if (!error) return
+
+    console.warn(
+      `[e2e/seed] Teardown of ${email} (${userId}) failed: ` +
+        `${error.message || '(no message)'} [status ${error.status ?? 'unknown'}]`,
+    )
   } catch (err) {
     console.warn(`[e2e/seed] Teardown of ${email} (${userId}) threw: ${(err as Error).message}`)
   }
