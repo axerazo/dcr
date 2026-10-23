@@ -72,7 +72,8 @@ The E2E suite covers twelve Critical User Journeys (CUJs) and no more. The plan 
 layer (formula correctness, float boundaries) belongs in Vitest, not here.
 
 - Commands: `npm run test:e2e` (full run), `npm run test:e2e:flake` (zero-flake check:
-  `--repeat-each=3 --retries=0 --workers=1`), `npm run test:e2e:ui`, `npm run test:e2e:report`.
+  `--repeat-each=3 --retries=0 --workers=1`), `npm run test:e2e:ui`, `npm run test:e2e:report`,
+  `npm run test:e2e:clean` (`supabase db reset`; clears accumulated E2E users).
   Supabase local must be running (`supabase start`, `npm run env:test`).
 - Layout: `e2e/NN-<journey>.spec.ts` (specs), `e2e/fixtures/` (`seed`, `seedUnauthenticated`,
   `register`, paths/env/admin client), `e2e/pages/` (page objects, e.g. `RegisterPage`),
@@ -94,8 +95,9 @@ layer (formula correctness, float boundaries) belongs in Vitest, not here.
   CI; asserts the oracle, not incidental DOM; creates and tears down its own data. CI config
   allows retries, but a test that passes only on retry is a failure, not a pass.
 - Audit-writing journeys cannot tear down their data: `audit_log` is append-only
-  (`audit_log_no_delete` trigger). This is by design. Locally, reset with
-  `supabase db reset`; CI starts from a fresh stack. Today those are the journeys that
+  (`audit_log_no_delete` trigger). This is by design. Leftover users never
+  affect later runs (each test seeds its own user), so reset only to tidy up:
+  `npm run test:e2e:clean`. CI starts from a fresh stack. Today those are the journeys that
   close/unlock a month, resolve an opening-balance mismatch or run reconciliation
   (e.g. CUJ-06, -07, -08, -11). CUJ-03's UI void writes no audit row (see TEST_PLAN §6).
 - Do not change anything under `src/` in an E2E PR. If a test exposes an app bug, report it
