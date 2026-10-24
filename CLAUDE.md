@@ -16,6 +16,8 @@ it governs, and cite the section (e.g., "SPEC §9") in commit messages when rele
 - `npm run test:run` — full Vitest suite (must be green before every commit)
 - `npm run build` — typecheck (`tsc -b`) + production build (must pass before every commit)
 - `npm run lint` — ESLint (flat config)
+- `npm test` — Vitest watch mode; `npm run test:ui` — Vitest UI
+- `npm run dev:test` — Vite in `test` mode on 127.0.0.1:5173 (strict port; what E2E targets)
 
 ## Architecture map
 
@@ -26,10 +28,22 @@ it governs, and cite the section (e.g., "SPEC §9") in commit messages when rele
   open → ready_to_close → soft_closed → hard_closed
 - `src/lib/reconciliation/` — AI-assisted reconciliation (system prompt, context
   builder, service). Model calls go through `reconciliationService.ts` only.
+- `src/lib/golden.test.ts` — golden-master suite (Phase 1). Data-driven: every JSON in
+  `src/lib/__fixtures__/golden/` is auto-discovered. Add coverage by adding a fixture,
+  never by editing the test file. Fixture format: `docs/golden-master/FIXTURE_SCHEMA.md`.
+  `scripts/extract-fixtures.mjs` turns a **sanitized** workbook into fixture JSON (Hard rule 3).
+- `src/lib/audit.ts` — audit-log writer; `src/lib/supabase.ts` — client;
+  `src/lib/database.types.ts` — generated DB types; `src/types/` — app domain types
+- `src/pages/` (`LoginPage`, `AppPage`) and `src/components/` (`register/`, `accounts/`,
+  `reconciliation/`, `ui/`) — React UI
 - `src/hooks/` — data access via TanStack Query + Supabase
 - `src/store/` — Zustand (auth, session)
 - `supabase/migrations/` — schema is migration-only; never edit an existing
   migration, always add a new numbered one
+- `scripts/write-env-test.mjs` (`npm run env:test`) — reads `supabase status` and writes the
+  local Supabase URL/keys (including the service-role key) into `.env.test`
+- `docs/` — `BACKLOG.md` (known gaps and bugs), `DCR_Phase0_Audit.md`, `e2e/TEST_PLAN.md`,
+  `golden-master/`
 - Transaction lifecycle (six states): recorded, scheduled, in_flight, pending,
   cleared, void. Void rows: balance = null, excluded from all balance math.
 
