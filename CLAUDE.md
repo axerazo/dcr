@@ -17,7 +17,9 @@ it governs, and cite the section (e.g., "SPEC §9") in commit messages when rele
 - `npm run build` — typecheck (`tsc -b`) + production build (must pass before every commit)
 - `npm run lint` — ESLint (flat config)
 - `npm test` — Vitest watch mode; `npm run test:ui` — Vitest UI
-- `npm run dev:test` — Vite in `test` mode on 127.0.0.1:5173 (strict port; what E2E targets)
+- `npm run dev:test` — Vite in `test` mode on 127.0.0.1:5173 (strict port; local E2E target)
+- `npm run build:test` / `npm run preview:test` — production build in `test` mode, served on
+  the same host/port (CI's E2E target; see "E2E target" below)
 
 ## Architecture map
 
@@ -171,6 +173,12 @@ layer (formula correctness, float boundaries) belongs in Vitest, not here.
   `--repeat-each=3 --retries=0 --workers=1`), `npm run test:e2e:ui`, `npm run test:e2e:report`,
   `npm run test:e2e:clean` (`supabase db reset`; clears accumulated E2E users).
   Supabase local must be running (`supabase start`, `npm run env:test`).
+- **E2E target: build once, test what ships.** Locally, E2E runs against the dev server (fast
+  feedback). CI sets `E2E_TARGET=preview`: Playwright rebuilds (`build:test`) and serves the
+  production bundle (`preview:test`), then uploads that exact `dist/` as the
+  `dcr-build-<sha>` artifact. To reproduce a CI-only failure locally (Git Bash):
+  `E2E_TARGET=preview npm run test:e2e`. Service workers are blocked in all runs
+  (`serviceWorkers: 'block'`) so `page.route()` mocks stay reliable.
 - Layout: `e2e/NN-<journey>.spec.ts` (specs), `e2e/fixtures/` (`seed`, `seedUnauthenticated`,
   `register`, paths/env/admin client), `e2e/pages/` (page objects, e.g. `RegisterPage`),
   `e2e/support/` (helpers, e.g. `money()`), `e2e/setup/auth.setup.ts`.

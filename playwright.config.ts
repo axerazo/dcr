@@ -13,8 +13,13 @@ import { STORAGE_STATE_PATH } from './e2e/fixtures/paths'
 const isCI = Boolean(process.env.CI)
 const BASE_URL = 'http://127.0.0.1:5173'
 
+// E2E_TARGET=preview tests the production build (vite build + vite preview)
+// instead of the dev server. CI always sets it: what passes is what ships.
+const usePreview = process.env.E2E_TARGET === 'preview'
+
 // Surfaced on every run so the target is never in doubt in a CI log.
 console.log(`[e2e] Supabase target: ${env.supabaseUrl}`)
+console.log(`[e2e] App target: ${usePreview ? 'production build (vite preview)' : 'dev server'}`)
 
 export default defineConfig({
   testDir: './e2e',
@@ -37,6 +42,10 @@ export default defineConfig({
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // The production build registers a PWA service worker, and requests it makes
+    // bypass page.route(). Blocking it keeps network mocks reliable; the dev
+    // server never registers one, so this is a no-op there.
+    serviceWorkers: 'block',
   },
 
   projects: [
@@ -58,9 +67,12 @@ export default defineConfig({
   webServer: {
     // --mode test makes Vite load .env.test, which overrides .env.local and so
     // points the app at the local stack instead of the live cloud project.
-    command: 'npm run dev:test',
+    // Preview always rebuilds first, so a stale dist/ can never be tested.
+    command: usePreview ? 'npm run build:test && npm run preview:test' : 'npm run dev:test',
     url: BASE_URL,
-    reuseExistingServer: !isCI,
+    // Never reuse in preview mode: a dev server already on :5173 would silently
+    // stand in for the build under test. strictPort makes that a loud failure.
+    reuseExistingServer: !isCI && !usePreview,
     // Cold Vite starts (first dep pre-bundle) are slow; 120s keeps CI honest
     // without turning a slow boot into a flaky failure.
     timeout: 120_000,
