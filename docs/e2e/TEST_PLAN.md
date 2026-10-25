@@ -1,6 +1,6 @@
 # DCR End-to-End Test Plan — Critical User Journeys
 
-**Status:** Draft v1 (pending approval) · **Owner:** Alex Erazo · **Tooling:** Playwright (`@playwright/test`)
+**Status:** v1 (approved; Waves 1–2 implemented) · **Owner:** Alex Erazo · **Tooling:** Playwright (`@playwright/test`)
 **Scope basis:** SPEC.md as of Phase 1.5 (`8dde301`) — oracle carry-forward rule, register auto-creation
 
 ---
@@ -91,21 +91,22 @@ performance/load.
 ## 3. Journey inventory
 
 Priority tiers: **P0** = smoke-critical (must pass before any merge), **P1** = core lifecycle,
-**P2** = important but lower frequency. Status reflects implementation waves.
+**P2** = important but lower frequency. Status shows the journey's wave and, once its spec has
+merged, the PR(s) that delivered it.
 
 | # | Journey | Priority | Spec file | Status |
 | --- | --- | --- | --- | --- |
-| CUJ-01 | Sign in and land on the current month's register | P0 | `e2e/setup/auth.setup.ts` + `e2e/01-auth.spec.ts` | Wave 1 |
-| CUJ-02 | Record a transaction and see running balances update | P0 | `e2e/02-record-transaction.spec.ts` | Wave 1 |
-| CUJ-03 | Void a transaction — strikethrough renders, voided amount drops out of balances | P0 | `e2e/03-void-transaction.spec.ts` | Wave 1 |
-| CUJ-04 | Month rollover — register auto-created, opening balance live-carries | P0 | `e2e/04-auto-carry.spec.ts` | Wave 2 |
-| CUJ-05 | Transaction status lifecycle — pending → cleared; available vs current balances diverge and reconverge | P1 | `e2e/05-status-lifecycle.spec.ts` | Wave 2 |
-| CUJ-06 | Close & Archive — ready-to-close prompt, soft close, lock banner, prior-month hard-close cascade | P1 | `e2e/06-close-archive.spec.ts` | Wave 2 |
+| CUJ-01 | Sign in and land on the current month's register | P0 | `e2e/setup/auth.setup.ts` + `e2e/01-auth.spec.ts` | Done (Wave 1, #3, #16) |
+| CUJ-02 | Record a transaction and see running balances update | P0 | `e2e/02-record-transaction.spec.ts` | Done (Wave 1, #5) |
+| CUJ-03 | Void a transaction — strikethrough renders, voided amount drops out of balances | P0 | `e2e/03-void-transaction.spec.ts` | Done (Wave 1, #9) |
+| CUJ-04 | Month rollover — register auto-created, opening balance live-carries | P0 | `e2e/04-auto-carry.spec.ts` | Done (Wave 2, #15) |
+| CUJ-05 | Transaction status lifecycle — pending → cleared; available vs current balances diverge and reconverge | P1 | `e2e/05-status-lifecycle.spec.ts` | Done (Wave 2, #18; unblocked by #22) |
+| CUJ-06 | Close & Archive — ready-to-close prompt, soft close, lock banner, prior-month hard-close cascade | P1 | `e2e/06-close-archive.spec.ts` | Done (Wave 2, #18) |
 | CUJ-07 | Unlock an archived month, edit, re-lock — including re-lock blocked while uncleared transactions exist | P2 | `e2e/07-unlock-relock.spec.ts` | Wave 3 |
 | CUJ-08 | Opening-balance mismatch prompt — "Use closing balance" resolves; "Keep" requires a reason | P1 | `e2e/08-mismatch-prompt.spec.ts` | Wave 3 |
 | CUJ-09 | Edit a transaction amount — balances cascade in-month and next month's opening updates live | P1 | `e2e/09-edit-cascade.spec.ts` | Wave 3 |
 | CUJ-10 | First-ever register initialization — the only remaining manual opening-balance entry | P2 | `e2e/10-first-register.spec.ts` | Wave 3 |
-| CUJ-11 | AI reconciliation session — suggestions render from (mocked) Claude; accept/reject updates statuses | P1 | `e2e/11-ai-reconciliation.spec.ts` | Wave 4 |
+| CUJ-11 | AI reconciliation session — suggestions render from (mocked) Claude; accept/reject updates statuses | P1 | `e2e/11-ai-reconciliation.spec.ts` | Wave 4, on hold: reconciliation is being re-planned |
 | CUJ-12 | Yearly Summary — populated rows for existing months, navigation back to a month register | P2 | `e2e/12-yearly-summary.spec.ts` | Wave 4 |
 
 ## 4. Journey specifications
@@ -221,6 +222,10 @@ appears again).
 **Traceability:** SPEC §11 Initialize-modal cases (revised 2026-07).
 
 ### CUJ-11 — AI reconciliation session (P1)
+> **On hold (2026-10-25).** The reconciliation feature is being re-planned because it doesn't
+> work the way it was intended. The oracle below describes the current flow and will be
+> rewritten once the planning side settles the new design. Don't implement this journey yet.
+
 **Goal:** The AI-differentiator journey: user runs reconciliation; suggestions arrive; user
 accepts one and rejects one.
 **Preconditions:** Register with rows shaped to produce match/mismatch suggestions;
