@@ -17,15 +17,17 @@ test.describe('CUJ-02: Record a transaction and see running balances update', ()
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     test('Record a debit then a credit; running and header balances follow Formula D', async ({ register, seed }) => {
-        const afterDebit = seed.openingBalance - 100
-        const afterCredit = afterDebit + 200
+        const DEBIT = 100
+        const CREDIT = 200
+        const afterDebit = seed.openingBalance - DEBIT
+        const afterCredit = afterDebit + CREDIT
 
         // Precondition: known opening balance and no transactions — header balances equal the opening
         await expect(register.openingBalance).toHaveText(money(seed.openingBalance))
         await expect(register.actualBalance).toHaveText(money(seed.openingBalance))
         await expect(register.availableBalance).toHaveText(money(seed.openingBalance))
 
-        await register.addTransaction({ description: 'Test Transaction', status: 'Cleared', debit: 100 })
+        await register.addTransaction({ description: 'Test Transaction', status: 'Cleared', debit: DEBIT })
 
         // Verify the balance column of the new transaction row shows the correct running balance, and that the header balances are updated accordingly
         await expect(register.row('Test Transaction').balance).toHaveText(money(afterDebit))
@@ -33,7 +35,7 @@ test.describe('CUJ-02: Record a transaction and see running balances update', ()
         await expect(register.availableBalance).toHaveText(money(afterDebit))
 
         // Add a pending credit transaction
-        await register.addTransaction({ description: 'Pending Credit', status: 'Pending', credit: 200 })
+        await register.addTransaction({ description: 'Pending Credit', status: 'Pending', credit: CREDIT })
 
         // Verify the balance column of the new transaction row shows the correct running balance, and that the header balances are updated accordingly
         await expect(register.row('Pending Credit').balance).toHaveText(money(afterCredit))
