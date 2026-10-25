@@ -75,8 +75,23 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E suite
+      - name: Run E2E suite (against the production build)
+        # Build once, test that build: Playwright runs `build:test` + `vite
+        # preview` instead of the dev server, so the bundle that passes is the
+        # bundle that would ship. See playwright.config.ts (E2E_TARGET).
         run: npm run test:e2e
+        env:
+          E2E_TARGET: preview
+
+      - name: Upload tested build
+        # The exact dist/ that passed, tagged by commit. A test-mode build (it
+        # points at the local stack), kept for traceability, not for deploying.
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: dcr-build-${{ github.sha }}
+          path: dist/
+          retention-days: 7
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

@@ -13,8 +13,18 @@ import { STORAGE_STATE_PATH } from './e2e/fixtures/paths'
 const isCI = Boolean(process.env.CI)
 const BASE_URL = 'http://127.0.0.1:5173'
 
+// Production build (vite build + vite preview) instead of the dev server, so
+// what passes is what ships. On for CI (E2E_TARGET=preview) and for the
+// pre-merge QA gate `npm run test:e2e:flake`, which npm identifies via
+// npm_lifecycle_event. (npm runs scripts through cmd.exe on Windows, so a
+// script can't portably set E2E_TARGET inline.)
+const usePreview =
+  process.env.E2E_TARGET === 'preview' ||
+  process.env.npm_lifecycle_event === 'test:e2e:flake'
+
 // Surfaced on every run so the target is never in doubt in a CI log.
 console.log(`[e2e] Supabase target: ${env.supabaseUrl}`)
+console.log(`[e2e] App target: ${usePreview ? 'production build (vite preview)' : 'dev server'}`)
 
 export default defineConfig({
   testDir: './e2e',
@@ -37,6 +47,10 @@ export default defineConfig({
     trace: 'on-first-retry',
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // The production build registers a PWA service worker, and requests it makes
+    // bypass page.route(). Blocking it keeps network mocks reliable; the dev
+    // server never registers one, so this is a no-op there.
+    serviceWorkers: 'block',
   },
 
   projects: [
@@ -58,9 +72,12 @@ export default defineConfig({
   webServer: {
     // --mode test makes Vite load .env.test, which overrides .env.local and so
     // points the app at the local stack instead of the live cloud project.
-    command: 'npm run dev:test',
+    // Preview always rebuilds first, so a stale dist/ can never be tested.
+    command: usePreview ? 'npm run build:test && npm run preview:test' : 'npm run dev:test',
     url: BASE_URL,
-    reuseExistingServer: !isCI,
+    // Never reuse in preview mode: a dev server already on :5173 would silently
+    // stand in for the build under test. strictPort makes that a loud failure.
+    reuseExistingServer: !isCI && !usePreview,
     // Cold Vite starts (first dep pre-bundle) are slow; 120s keeps CI honest
     // without turning a slow boot into a flaky failure.
     timeout: 120_000,
