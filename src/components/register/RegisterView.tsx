@@ -15,6 +15,7 @@ import { useTransactions, useAddTransaction, useUpdateTransaction, useUpdateTran
 import { computeBalanceSummary, computeClosingBalance, formatCurrency, currencyEq } from '@/lib/balance'
 import { pendingTransactionCount, allTransactionsCleared } from '@/lib/monthStatus'
 import { writeAuditEntry } from '@/lib/audit'
+import { buildTransactionAuditEntries, isAuditedEditRegister } from '@/lib/transactionAudit'
 import { buildReconciliationContext } from '@/lib/reconciliation/buildContext'
 import { runReconciliationSession } from '@/lib/reconciliation/reconciliationService'
 import { useAuthStore } from '@/store/authStore'
@@ -708,33 +709,63 @@ export function RegisterView({ account }: RegisterViewProps) {
   )
 
   // --- Transaction handlers ---
+  // Audit runs only after the write succeeds, so a failed save leaves no entry.
+  // Status transitions are always audited; field edits only in an unlocked
+  // closed month (SPEC §10, §12; see transactionAudit.ts).
+  const auditTransactionSave = useCallback(
+    async (before: DbTransaction, after: DbTransaction) => {
+      if (!register || !user) return
+      const entries = buildTransactionAuditEntries(before, after, {
+        user_id: user.id,
+        account_id: account.id,
+        auditEdits: isAuditedEditRegister(register),
+      })
+      for (const entry of entries) await writeAuditEntry(entry)
+    },
+    [register, user, account.id],
+  )
+
   const handleSave = useCallback(
-    (id: string, changes: Partial<DbTransaction>) => {
+    async (id: string, changes: Partial<DbTransaction>) => {
       if (!register) return
       const tx = transactions.find((t) => t.id === id)
       if (!tx) return
-      updateTransaction.mutate({
-        id,
-        register_id: register.id,
-        currentStatus: tx.status,
-        ...changes,
-      })
+      let updated: DbTransaction
+      try {
+        updated = await updateTransaction.mutateAsync({
+          id,
+          register_id: register.id,
+          currentStatus: tx.status,
+          ...changes,
+        })
+      } catch {
+        return // failure is kept in the mutation's error state; nothing to audit
+      }
+      await auditTransactionSave(tx, updated)
     },
-    [register, transactions, updateTransaction],
+    [register, transactions, updateTransaction, auditTransactionSave],
   )
 
   const handleVoid = useCallback(
-    (id: string) => {
+    async (id: string) => {
       if (!register) return
+      const tx = transactions.find((t) => t.id === id)
+      if (!tx) return
       if (
         !window.confirm(
           'Mark this transaction as void? It will be excluded from all calculations.',
         )
       )
         return
-      deleteTransaction.mutate({ id, register_id: register.id })
+      let voided: DbTransaction
+      try {
+        voided = await deleteTransaction.mutateAsync({ id, register_id: register.id })
+      } catch {
+        return
+      }
+      await auditTransactionSave(tx, voided)
     },
-    [register, deleteTransaction],
+    [register, transactions, deleteTransaction, auditTransactionSave],
   )
 
   const handleCreate = useCallback(

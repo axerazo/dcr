@@ -236,8 +236,8 @@ layer (formula correctness, float boundaries) belongs in Vitest, not here.
   (`audit_log_no_delete` trigger). This is by design. Leftover users never
   affect later runs (each test seeds its own user), so reset only to tidy up:
   `npm run test:e2e:clean`. CI starts from a fresh stack. Today those are the journeys that
-  close/unlock a month, resolve an opening-balance mismatch or run reconciliation
-  (e.g. CUJ-06, -07, -08, -11). CUJ-03's UI void writes no audit row (see TEST_PLAN §6).
+  void (CUJ-03), change a status (CUJ-05), close/unlock a month, resolve an opening-balance
+  mismatch or run reconciliation (e.g. CUJ-06, -07, -08, -11); see TEST_PLAN §6.
 - Do not change anything under `src/` in an E2E PR. If a test exposes an app bug, report it
   separately; do not fix it inside the test PR.
 - When reviewing E2E changes: check the asserted oracle against TEST_PLAN §4 and the

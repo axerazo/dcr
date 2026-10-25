@@ -265,17 +265,16 @@ the oracle (not incidental DOM), and is traceable here by CUJ number.
 > the append-only invariant working as designed, not a defect. CI is unaffected
 > (fresh stack per run); locally, `npm run test:e2e:clean` (`supabase db reset`) is the reset path.
 >
-> *Status at CUJ-03:* the amendment does not yet apply to CUJ-03. Voiding in the UI
-> writes no `audit_log` row — observed live (`audit_log` empty after a void, and the
-> user's data tears down normally) and in the source (`handleVoid` never calls
-> `writeAuditEntry`) — although the SPEC §10 Void Rule requires an audit entry. That
-> gap is an app discrepancy tracked in [#12](https://github.com/axerazo/dcr/issues/12),
-> not fixed in the test PR. The app today writes audit rows for month close/unlock, opening-balance
-> decisions and reconciliation (e.g. CUJ-06, -07, -08, -11), so those journeys are where the
-> amendment first applies. Status transitions (CUJ-05) are not audited today either, tracked in
-> [#13](https://github.com/axerazo/dcr/issues/13); if that is fixed, CUJ-05 joins this set.
-> If void auditing is implemented, CUJ-03 joins them and its
-> teardown expectation must be revisited in the same change.
+> *Which journeys write audit rows:* since the fix for
+> [#12](https://github.com/axerazo/dcr/issues/12) and [#13](https://github.com/axerazo/dcr/issues/13),
+> every void (`voided`) and every status transition (`status_changed`) writes an audit row
+> (SPEC §10), and field edits write `edited` rows while a hard-closed month is unlocked for
+> editing (SPEC §12 rule 6). Adding a transaction writes none. So the amendment now applies to
+> CUJ-03 (void) and CUJ-05 (status changes) as well as the journeys that close/unlock a month,
+> resolve an opening-balance mismatch or run reconciliation (CUJ-06, -07, -08, -11). Their
+> users stay in the local database after the run; seed teardown detects the audit rows and
+> leaves the user with a note, so no spec change is needed. CUJ-03's oracle (§4) still
+> leaves the audit assertion to a later API-level check.
 
 ---
 *Maintained alongside SPEC.md; update this plan in the same PR as any journey change.*
