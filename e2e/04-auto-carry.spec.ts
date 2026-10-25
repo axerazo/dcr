@@ -26,7 +26,7 @@ test.describe('CUJ-04: Month rollover — register auto-created, opening balance
 
         const fullMonthName = thisMonth.toLocaleDateString('en-US', { month: 'long' })
 
-        await expect(page.getByRole('cell', { name: '$' })).toHaveText(money(startingBalance))
+        await expect(register.openingBalance).toHaveText(money(startingBalance))
         await expect(register.actualBalance).toHaveText(money(startingBalance))
         await expect(register.availableBalance).toHaveText(money(startingBalance))
 
