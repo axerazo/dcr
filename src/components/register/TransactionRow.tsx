@@ -212,7 +212,9 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
       className={`group border-b border-slate-200 text-sm transition-colors ${zebraClass} ${rowClass} ${
         isVoid ? 'line-through text-slate-400' : ''
       } ${isLocked ? 'cursor-default' : 'cursor-text'} ${
-        !isLocked && !isVoid && !editing ? 'hover:brightness-95' : ''
+        // No hover filter while the status menu is open: a non-none filter makes the
+        // row a stacking context, trapping the menu's z-50 beneath later rows (#17)
+        !isLocked && !isVoid && !editing && !statusMenuOpen ? 'hover:brightness-95' : ''
       }`}
       onClick={!editing && !isLocked && !isVoid ? startEdit : undefined}
       onKeyDown={editing ? handleKeyDown : undefined}
