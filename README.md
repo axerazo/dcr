@@ -24,6 +24,8 @@ When a model classifies a financial transaction there is no fixed expected value
 
 The approach here: maintain a parallel implementation of the same financial logic in a separate system — the Excel workbook, built independently of the application — and treat it as the oracle. Every calculation the application produces is diffed against it. Divergence is a defect in one of the two, and the process forces you to determine which.
 
+Today the oracle validates the calculation engine: running, current, available and closing balances, and the carry-forward rule. The AI reconciliation it was designed to check is being re-planned, and its validation will be designed alongside it.
+
 ### What the method actually caught
 
 **The carry-forward rule.** The running-balance logic depends on how a register carries a balance forward. The rule was resolved empirically, by reading the oracle's formulas rather than by asking anyone: it is *status-blind* — the last amount-bearing, non-void row, regardless of cleared or pending status. That finding contradicted both my own verbal description of the rule and the AI's initial analysis of it. Two independent accounts of the requirement were wrong; the oracle was right.
@@ -60,7 +62,7 @@ npm run test:e2e   # Playwright end-to-end suite
 
 **Unit suite — 79 tests, CI green.** Covers the `balance.ts` financial math layer: running balance computation, current/available/closing balance derivation, in-flight detection, and currency comparison with half-cent tolerance. Established as a golden-master suite in Phase 1 and extended through Phase 1.5.
 
-**End-to-end.** Playwright infrastructure is standing: local Supabase stack, complete migration schema including GRANT statements, environment bootstrap script, and CI jobs green on GitHub Actions. CUJ specs are being implemented wave by wave.
+**End-to-end: CUJ-01–06 implemented (Waves 1–2), CI green.** Playwright runs against the production build in CI, on a local Supabase stack with a freshly seeded user per test, held to a zero-flake bar (3 runs, no retries). Wave 3 (CUJ-07–10) is next. CUJ-11 (AI reconciliation) is on hold while that feature is re-planned.
 
 **[`docs/e2e/TEST_PLAN.md`](./docs/e2e/TEST_PLAN.md)** defines the E2E strategy: 12 critical user journeys across four implementation waves, traceability to SPEC sections, P0–P2 priority tiering, an explicit oracle definition per journey, and a written definition of done.
 
