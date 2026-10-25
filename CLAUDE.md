@@ -123,10 +123,10 @@ chat reads the docs from a fresh clone of the repo, so none are kept as project 
 copy would go stale). The rolling file `planning/PLAN.md` carries the cases between chats;
 `docs/PLANNING_HANDOFF.md` is the contract for that file and for filing issues from it.
 Never add the Excel workbook or anything derived from it (Hard rule 3).
-- Each planning session ends with a list of tasks in the shape of
-  `.github/ISSUE_TEMPLATE/task.md`: summary, why, acceptance criteria (the oracle), lane,
-  SPEC/TEST_PLAN refs, and blocked-by/blocks links.
-- The user brings that list to a VS Code session, which files each task as a GitHub issue
+- Each planning session ends with the full updated `planning/PLAN.md`, committed via a docs PR.
+  Each case in it has the shape of `.github/ISSUE_TEMPLATE/task.md`: summary, why, acceptance
+  criteria (the oracle), lane, SPEC/TEST_PLAN refs, and blocked-by/blocks links.
+- When the user asks, a VS Code session files only the cases marked `Ready` as GitHub issues
   (`gh issue create`), shows the issue numbers and links dependencies.
 - Issues are the backlog. Lanes pick them up by number; nothing is re-explained.
 - Decisions that change how we work go into this file (via PR), not just into chat.

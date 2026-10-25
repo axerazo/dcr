@@ -1,12 +1,13 @@
 # Planning handoff: from planning chats to GitHub issues
 
-Status: DRAFT for review (Alex). Claude Code opens the PR; Alex merges.
+Status: Active. Changes go through a docs PR; Alex merges.
 
 This is the contract between the planning chats (Claude desktop app, "DCR Planning"
 project, often spoken) and the Claude Code session that files the issues. It adds to
 CLAUDE.md "Planning → issues"; it does not replace it. The issue body format is
 `.github/ISSUE_TEMPLATE/task.md`, which this file must not contradict. Issue #28 is the
-reference example.
+example for format only: it predates the `Ready` rule, and its Dependencies line is prose
+where a link or a settled decision would now be required.
 
 ## 1. The rolling planning file
 
@@ -53,17 +54,20 @@ Status: Shaped | Ready | Filed (#N) | Dropped
 Labels: <comma-separated, or "none">
 Blocked by: <Case numbers, or "none">
 
-## Summary
-## Why
-## Acceptance criteria (oracle)
+#### Summary
+#### Why
+#### Acceptance criteria (oracle)
 - [ ]
-## Open for planning        <- optional; only if questions remain (as in #28)
-## Lane
-## References
-## Dependencies
+#### Open for planning        <- optional; only if questions remain (as in #28)
+#### Lane
+#### References
+#### Dependencies
 ```
 
-Everything from `## Summary` down is the issue body, verbatim, in `task.md` order.
+In `PLAN.md` the section headings sit at level 4 so they nest under `### Case N`. The issue
+body is everything from `#### Summary` down, with each heading promoted two levels
+(`####` to `##`) when the body file is written, so the filed issue uses the `task.md`
+headings exactly.
 
 Rules for content:
 - **Why** starts with `Decision (Alex, YYYY-MM-DD):` when a decision drove the case, and
@@ -94,12 +98,14 @@ Rules for content:
    number → URL.
 7. Do not put the string that triggers `.github/workflows/claude.yml` (an `@`-mention of the
    bot) in any issue title or body unless Alex asks for a bot run. The workflow fires on
-   `issues: opened`.
+   `issues: opened` and on `issues: assigned`, so assigning an issue that contains the
+   mention starts a run too.
 8. Needs decision items are not filed; add a planning comment on the related issue in the
-   style of #28: `Planning priority (Alex, YYYY-MM-DD): ...`. Process decisions go into a
-   CLAUDE.md PR.
+   style of #28: `**Planning priority (Alex, YYYY-MM-DD):** ...` (bold lead-in). Process
+   decisions go into a CLAUDE.md PR.
 9. Verify after filing: `gh issue view <N> --json title,body,labels` for each issue; confirm
-   the body matches the case block and the labels are applied.
+   the body matches the case block (headings promoted to `##`, in `task.md` order) and the
+   labels are applied.
 10. Update `planning/PLAN.md` (status `Filed (#N)`, index row) in a docs-only PR.
 
 ## 4. Planning chat: session-start report
@@ -128,14 +134,19 @@ whether the issue list was provided, and anything that failed.
 ## Process decisions
 ```
 
-## 6. Open points for review
+## 6. Decisions recorded and open points
 
-- **File path:** `planning/PLAN.md` is a default; change it if you prefer `docs/planning/`.
-- **`task.md`:** add the optional `## Open for planning` section to the template itself?
-- **CLAUDE.md "Planning → issues"** currently says the "DCR Planning" project holds
-  CLAUDE.md, SPEC.md, TEST_PLAN.md and BACKLOG.md as project knowledge. The planning chat
-  now reads them from a fresh clone each session, so a copy in project knowledge would only go
-  stale. Update that paragraph in the same PR: the name stays, the knowledge list goes, and the
-  rolling file and this document are named.
-- **Hard rule 3** (no Excel workbook, nothing derived from it) applies to the planning project
-  too. State that in its instructions.
+Settled in PR #38:
+- The CLAUDE.md "Planning → issues" paragraph names the "DCR Planning" project, drops the
+  project-knowledge list, and points to `planning/PLAN.md` and this document.
+- File path: `planning/PLAN.md`.
+- The bullets under that CLAUDE.md paragraph match this process: a session ends with the full
+  updated `planning/PLAN.md`, and only `Ready` cases are filed.
+
+Still open:
+- Add the optional `## Open for planning` section to `.github/ISSUE_TEMPLATE/task.md`?
+  (#28 uses it; `task.md` does not include it.)
+
+Outside the repo:
+- **Hard rule 3** (no Excel workbook, nothing derived from it) applies to the planning
+  project too. State it in the project's instructions.
