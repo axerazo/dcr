@@ -54,6 +54,13 @@ it governs, and cite the section (e.g., "SPEC §9") in commit messages when rele
 1. **Any change touching `src/lib/balance.ts` or `src/lib/monthStatus.ts` requires
    the full test suite green BEFORE and AFTER, and new/updated tests covering the
    change.** These files are the product. Treat every edit as high-risk.
+   **Core = the balance calculations and the monthly roll-over**, and it is protected at all
+   cost. Besides the two files above, the roll-over lives in `src/components/register/RegisterView.tsx`
+   (register auto-creation, carry-forward to next month's opening, mismatch prompt) and
+   `useMostRecentRegisterBefore` in `src/hooks/useRegister.ts`; the golden fixtures are its
+   expectations. Flag any change that touches core to the user immediately, before proceeding.
+   Everything else follows normal development. Nothing else is core (AI reconciliation
+   included) unless the user decides so. CI guard: #28.
 2. Currency values currently use floating-point with `currencyEq` (±0.005)
    tolerance. A migration to integer cents is planned but MUST NOT begin until the
    golden-master suite exists. Until then, always use `currencyEq` for currency
@@ -215,6 +222,13 @@ layer (formula correctness, float boundaries) belongs in Vitest, not here.
     Use `setFixedTime`, not `clock.install()`: install also fakes timers and risks stalling
     TanStack Query's refetch/retry behavior.
 - Selectors: `getByRole` / `getByLabel` first; `data-testid` only where semantics are absent.
+- Page objects hold the helpers: locators and actions. They may wait for the page to settle,
+  but never assert an oracle. Specs hold the oracles and claims. A one-off page used by a
+  single journey (the login form in CUJ-01) needs no page object.
+- "Wish test first": write the assertion you wish you could write, then build the locator or
+  helper that makes it possible.
+- A missing `data-testid` / `aria-label` (or a selector that needs a structural workaround such
+  as XPath) is logged in `docs/BACKLOG.md` as a `UI-only` item, not fixed in the test PR.
 - Definition of done (TEST_PLAN §6): passes 3x consecutively with no retries, locally and in
   CI; asserts the oracle, not incidental DOM; creates and tears down its own data. CI config
   allows retries, but a test that passes only on retry is a failure, not a pass.
@@ -236,3 +250,8 @@ layer (formula correctness, float boundaries) belongs in Vitest, not here.
 - Phase 1 (golden-master suite on the calc engine) — IN PROGRESS
 - Phase 2 (integer-cents migration, dependency majors, Edge Function key proxy) — pending
 - Phase 3 (AI-augmented QA layer: subagents, hooks, MCP server, plugin) — pending
+- E2E suite: Waves 1–2 (CUJ-01–06) done 2026-10-23; Wave 3 (CUJ-07–10) next. Per-journey
+  status lives in TEST_PLAN §3.
+- AI reconciliation is being re-planned (it doesn't work the way it was intended), so CUJ-11 is
+  on hold until the planning side settles the new design. Don't build on the current
+  reconciliation flow.
