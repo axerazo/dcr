@@ -125,6 +125,18 @@ SPEC.md              Detailed system specification (continuously maintained)
 README.md            This file
 ```
 
+## What this project demonstrates
+
+A reviewer's index: each claim links to the evidence in this repo. The project is built as AI-augmented QA engineering: I own the oracles and the test logic, AI writes within written rules ([`CLAUDE.md`](./CLAUDE.md)), and CI enforces the standard.
+
+- **Test strategy with an explicit oracle.** Twelve critical user journeys, each with a written oracle ([TEST_PLAN](./docs/e2e/TEST_PLAN.md) §4), and anything provable at a lower layer pushed down to Vitest (§1). CUJ-01–06 are implemented in [`e2e/`](./e2e/); CUJ-07–10 are next.
+- **A zero-flake bar enforced by a command.** `npm run test:e2e:flake` runs the suite three times with no retries and one worker ([`package.json`](./package.json)). A test that passes only on retry counts as a failure ([`CLAUDE.md`](./CLAUDE.md), "E2E tests").
+- **Isolated, deterministic tests.** Every test seeds its own user, and the browser clock is pinned with `setFixedTime` to remove a month-boundary race ([`e2e/fixtures/seed.ts`](./e2e/fixtures/seed.ts)). The division of labor is written down: Claude may author fixtures and infrastructure, while spec logic and oracles are human-authored ([TEST_PLAN](./docs/e2e/TEST_PLAN.md) §1, "Pairing sessions").
+- **An independent correctness standard for AI-assisted work.** A golden-master suite ([`src/lib/golden.test.ts`](./src/lib/golden.test.ts), [fixture schema](./docs/golden-master/FIXTURE_SCHEMA.md)) plus the differential validation described in [The validation problem](#the-validation-problem).
+- **Writing the specs surfaced real defects.** The app writes no audit-log rows for voids, status changes or edits, though the SPEC requires them ([#12](https://github.com/axerazo/dcr/issues/12), [#13](https://github.com/axerazo/dcr/issues/13), recorded in TEST_PLAN §6). A status menu was covered by later rows' icons ([#17](https://github.com/axerazo/dcr/issues/17), fixed together with its spec change in [#22](https://github.com/axerazo/dcr/pull/22)). Login labels weren't associated with their inputs, so `getByLabel` couldn't reach them ([`120ff1b`](https://github.com/axerazo/dcr/commit/120ff1b)).
+- **CI that tests what ships.** A `verify` job gates an `e2e` job; CI runs E2E against the production build ([#24](https://github.com/axerazo/dcr/pull/24)), and the Supabase CLI is pinned ([`ci.yml`](./.github/workflows/ci.yml)).
+- **AI-augmented, human-owned workflow.** Two lanes (human-written tests, Claude-written app code), draft-PR hand-offs, and an automatic Claude review on every PR ([`CLAUDE.md`](./CLAUDE.md), [workflow](./.github/workflows/claude-code-review.yml), [review-bot runbook](./docs/cheat-sheets/claude-review-bot-cheatsheet.md)). `main` requires a PR and green CI.
+
 ## Approach
 
 Built with Claude as an implementation partner, under a deliberate division of labor rather than an open-ended one.
