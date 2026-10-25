@@ -90,8 +90,8 @@ Two git worktrees of the same repo, each with its own branch and Claude session:
 
 - Check `git worktree list` / the current folder before acting; stay in your lane's folder.
 - Both lanes share one local Supabase stack and port 5173 (`dev:test` is `--strictPort`).
-  **Only the test lane runs E2E**; the dev lane verifies with Vitest + build. If a dev-lane
-  fix needs E2E confirmation, hand off to the test lane.
+  **Only the test lane runs E2E locally**; the dev lane verifies with Vitest + build and
+  relies on CI for E2E (see PR flow below).
 - Branch from `origin/main`, one branch per task (`fix/<issue>-<slug>`, `docs/<slug>`,
   `phase1/<slug>`). After the other lane merges, rebase onto `origin/main` before merging.
 - Every PR gets the automatic Claude review (`.github/workflows/claude-code-review.yml`);
@@ -100,6 +100,24 @@ Two git worktrees of the same repo, each with its own branch and Claude session:
   (`Fixes #N`) in the PR.
 - A new worktree needs its own setup: `npm ci`, `npm run env:test`, and a copy of
   `.env.local` (both env files are gitignored).
+
+### PR flow: dev → QA → merge (the PR is the meeting point)
+
+1. **Dev lane** opens the PR as a **draft**, referencing the issue (`Fixes #N`). CI runs the
+   full E2E suite on the branch.
+2. If the bug was found by a spec marked `test.fail(...)`, CI reports **"Expected to fail,
+   but passed"**. That red result means the fix works and is the hand-off signal to QA,
+   not a regression.
+3. **Test lane** joins the same branch (`gh pr checkout <N>`), un-marks the spec
+   (`test.fail(` → `test(`), and pushes to the same PR. Fix and spec change ship in **one PR**,
+   so `main` never runs red.
+4. **QA's last step before merging:** `npm run test:e2e:flake` (3x, no retries, TEST_PLAN §6)
+   on the affected specs. CI allows retries, so a CI pass alone doesn't meet §6.
+5. CI green → mark ready → the user merges, then `git switch main` in the test lane.
+
+`main` is protected by the "main: PR + CI required" ruleset: PRs only, "Lint, build, test" and
+"E2E (Playwright)" must pass on a branch that is up to date with `main`, no bypass. Never try to
+push to `main` directly.
 
 ## E2E tests (Playwright)
 
