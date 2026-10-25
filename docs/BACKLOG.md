@@ -2,6 +2,12 @@
 
 ## **Updates/Improvements**
 
+- **PLANNING PRIORITY: where the roll-over code lives, before the core CI guard ([#28](https://github.com/axerazo/dcr/issues/28))** (touches-core)
+  - Core = the balance calculations and the monthly roll-over (CLAUDE.md Hard rule 1). The roll-over decisions (register auto-creation, carry-forward to next month's opening, mismatch prompt) sit inside `src/components/register/RegisterView.tsx`, a UI component, so a CI guard can't protect them without firing on every UI change.
+  - Discuss first: move them out of `RegisterView.tsx`, likely into a pure `src/lib/` module next to `balance.ts`? Alex leans yes; **not decided**.
+  - Weigh before deciding: the move is itself a core change (Hard rule 1: full suite green before and after, new tests); which layer covers the extracted logic (golden master, new unit tests, E2E CUJ-04/-06/-08/-09); ordering against Wave 3 E2E work, which exercises this code.
+  - Then #28's second question: a required label, or a failing check that a label clears.
+
 - **E2E: void x status matrix** (test-only, no `src/` change; no legend tag applies)
   - Analysis: `CUJ-03_void_matrix_analysis.xlsx` (Matrix sheet). Summary below.
   - Why: CUJ-03 exercises one cell only (recorded debit -> void). SPEC section 10 says void is available from any status.
