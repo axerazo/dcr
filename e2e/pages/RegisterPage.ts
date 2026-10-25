@@ -12,15 +12,14 @@ function toLocalISODate(d: Date): string {
     return `${y}-${m}-${day}`
 }
 
+// Only the fields addTransaction fills; the add row offers no Void status
 type NewTransaction = {
-    checkNumber?: number
     transactionDate?: Date
     description: string
-    status?: 'Recorded' | 'Cleared' | 'Pending' | 'Void'
+    status?: 'Recorded' | 'Cleared' | 'Pending'
     debit?: number
     credit?: number
     notes?: string
-    scheduledDate?: Date
 }
 
 export class RegisterPage {
