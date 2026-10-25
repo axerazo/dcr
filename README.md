@@ -24,6 +24,8 @@ When a model classifies a financial transaction there is no fixed expected value
 
 The approach here: maintain a parallel implementation of the same financial logic in a separate system — the Excel workbook, built independently of the application — and treat it as the oracle. Every calculation the application produces is diffed against it. Divergence is a defect in one of the two, and the process forces you to determine which.
 
+Today the oracle validates the calculation engine: running, current, available and closing balances, and the carry-forward rule. The AI reconciliation it was designed to check is being re-planned, and its validation will be designed alongside it.
+
 ### What the method actually caught
 
 **The carry-forward rule.** The running-balance logic depends on how a register carries a balance forward. The rule was resolved empirically, by reading the oracle's formulas rather than by asking anyone: it is *status-blind* — the last amount-bearing, non-void row, regardless of cleared or pending status. That finding contradicted both my own verbal description of the rule and the AI's initial analysis of it. Two independent accounts of the requirement were wrong; the oracle was right.
@@ -60,7 +62,7 @@ npm run test:e2e   # Playwright end-to-end suite
 
 **Unit suite — 79 tests, CI green.** Covers the `balance.ts` financial math layer: running balance computation, current/available/closing balance derivation, in-flight detection, and currency comparison with half-cent tolerance. Established as a golden-master suite in Phase 1 and extended through Phase 1.5.
 
-**End-to-end.** Playwright infrastructure is standing: local Supabase stack, complete migration schema including GRANT statements, environment bootstrap script, and CI jobs green on GitHub Actions. CUJ specs are being implemented wave by wave.
+**End-to-end: CUJ-01–06 implemented (Waves 1–2), CI green.** Playwright runs against the production build in CI, on a local Supabase stack with a freshly seeded user per test, held to a zero-flake bar (3 runs, no retries). Wave 3 (CUJ-07–10) is next. CUJ-11 (AI reconciliation) is on hold while that feature is re-planned.
 
 **[`docs/e2e/TEST_PLAN.md`](./docs/e2e/TEST_PLAN.md)** defines the E2E strategy: 12 critical user journeys across four implementation waves, traceability to SPEC sections, P0–P2 priority tiering, an explicit oracle definition per journey, and a written definition of done.
 
@@ -124,6 +126,18 @@ docs/e2e/
 SPEC.md              Detailed system specification (continuously maintained)
 README.md            This file
 ```
+
+## What this project demonstrates
+
+A reviewer's index: each claim links to the evidence in this repo. The project is built as AI-augmented QA engineering: I own the oracles and the test logic, AI writes within written rules ([`CLAUDE.md`](./CLAUDE.md)), and CI enforces the standard.
+
+- **Test strategy with an explicit oracle.** Twelve critical user journeys, each with a written oracle ([TEST_PLAN](./docs/e2e/TEST_PLAN.md) §4), and anything provable at a lower layer pushed down to Vitest (§1). CUJ-01–06 are implemented in [`e2e/`](./e2e/); CUJ-07–10 are next.
+- **A zero-flake bar enforced by a command.** `npm run test:e2e:flake` runs the suite three times with no retries and one worker ([`package.json`](./package.json)). A test that passes only on retry counts as a failure ([`CLAUDE.md`](./CLAUDE.md), "E2E tests").
+- **Isolated, deterministic tests.** Every test seeds its own user, and the browser clock is pinned with `setFixedTime` to remove a month-boundary race ([`e2e/fixtures/seed.ts`](./e2e/fixtures/seed.ts)). The division of labor is written down: Claude may author fixtures and infrastructure, while spec logic and oracles are human-authored ([TEST_PLAN](./docs/e2e/TEST_PLAN.md) §1, "Pairing sessions").
+- **An independent correctness standard for AI-assisted work.** A golden-master suite ([`src/lib/golden.test.ts`](./src/lib/golden.test.ts), [fixture schema](./docs/golden-master/FIXTURE_SCHEMA.md)) plus the differential validation described in [The validation problem](#the-validation-problem).
+- **Writing the specs surfaced real defects.** The app writes no audit-log rows for voids, status changes or edits, though the SPEC requires them ([#12](https://github.com/axerazo/dcr/issues/12), [#13](https://github.com/axerazo/dcr/issues/13), recorded in TEST_PLAN §6). A status menu was covered by later rows' icons ([#17](https://github.com/axerazo/dcr/issues/17), fixed together with its spec change in [#22](https://github.com/axerazo/dcr/pull/22)). Login labels weren't associated with their inputs, so `getByLabel` couldn't reach them ([`120ff1b`](https://github.com/axerazo/dcr/commit/120ff1b)).
+- **CI that tests what ships.** A `verify` job gates an `e2e` job; CI runs E2E against the production build ([#24](https://github.com/axerazo/dcr/pull/24)), and the Supabase CLI is pinned ([`ci.yml`](./.github/workflows/ci.yml)).
+- **AI-augmented, human-owned workflow.** Two lanes (human-written tests, Claude-written app code), draft-PR hand-offs, and an automatic Claude review on every PR ([`CLAUDE.md`](./CLAUDE.md), [workflow](./.github/workflows/claude-code-review.yml), [review-bot runbook](./docs/cheat-sheets/claude-review-bot-cheatsheet.md)). `main` requires a PR and green CI.
 
 ## Approach
 
