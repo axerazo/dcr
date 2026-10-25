@@ -117,6 +117,28 @@ remote branch for you after merge.
 
 ---
 
+## Dependency PRs (package.json / lockfile changes)
+
+Build and unit tests can pass while the app is visibly broken. Example: `9581a7b` ("Update
+npm packages") moved `tailwindcss` from `^3.4.14` to `^4.3.3`, a major version, and the
+styling had to be migrated in #7.
+
+1. **Look for major bumps before merging.** A change in the first number is a major version
+   and can be a breaking change. Read that package's migration guide.
+
+   ```bash
+   git diff origin/main -- package.json   # compare the first number of each version
+   npm outdated                           # Current vs Latest; a different first number = major
+   ```
+
+2. **Look at the running app**, not just the checks: `npm run dev`, open the register, and
+   check layout, colors and buttons. Styling regressions don't fail `npm run build`.
+3. **Reinstall after switching branches** whose `package.json` or lockfile differs:
+   `npm ci`. Otherwise `node_modules` still holds the other branch's versions (for example
+   a Tailwind v3 config running against v4 packages).
+
+---
+
 ## Gotchas
 
 | Symptom | Cause | Fix |
@@ -125,7 +147,9 @@ remote branch for you after merge.
 | `git add .` staged files you didn't mean to commit | Untracked files in the tree | Explicit paths only (§4) |
 | `fatal: a branch named X already exists` | You already created it (`checkout -b` and `switch -c` do the same thing) | Harmless; `git switch X` |
 | `npm i` shows lockfile changes you didn't make | Different npm versions rewrite lockfile metadata | Use `npm ci`; only commit lockfile changes you intended |
-| `git branch -d` refuses | Branch not merged into your current branch | Merge first, or `-D` only if you are certain you want to discard it |
+| `git branch -d` refuses | Branch not merged into your current branch. After a **squash** merge it always refuses, because the branch's own commits never land on `main` | Squash-merged: confirm `gh pr view [branch name] --json state` says `MERGED`, then `-D`. Otherwise merge first, or `-D` only if you are certain you want to discard it |
+| Build and tests pass, but the app looks broken after a dependency PR | A major version bump (e.g. Tailwind v3 → v4) | Dependency PRs §1–2: check for majors, look at the running app |
+| Styles or behavior wrong right after `git switch` | `node_modules` installed for the other branch's `package.json` | `npm ci` (Dependency PRs §3) |
 | `CRLF will be replaced by LF` warning | `.gitattributes` normalizes to LF | Harmless |
 
 ## Quick reference
