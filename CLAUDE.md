@@ -108,12 +108,36 @@ Two git worktrees of the same repo, each with its own branch and Claude session:
 2. If the bug was found by a spec marked `test.fail(...)`, CI reports **"Expected to fail,
    but passed"**. That red result means the fix works and is the hand-off signal to QA,
    not a regression.
-3. **Test lane** joins the same branch (`gh pr checkout <N>`), un-marks the spec
-   (`test.fail(` → `test(`), and pushes to the same PR. Fix and spec change ship in **one PR**,
-   so `main` never runs red.
+3. **Unblock the spec in the same PR**, so fix and spec ship together and `main` never runs red:
+   - **Pre-authorized (dev lane may do it):** only lines tagged `// BLOCKED-BY #N` (see below).
+   - **Anything else in `e2e/`:** the test lane joins the branch (`gh pr checkout <N>`), makes
+     the change and pushes to the same PR.
 4. **QA's last step before merging:** `npm run test:e2e:flake` (3x, no retries, TEST_PLAN §6)
    on the affected specs. CI allows retries, so a CI pass alone doesn't meet §6.
 5. CI green → mark ready → the user merges, then `git switch main` in the test lane.
+
+#### `BLOCKED-BY #N`: pre-authorized spec unblocks
+
+QA tags spec code that is waiting on an app fix, with the tag directly above it:
+
+```ts
+// BLOCKED-BY #17: status menu covered by later rows
+test.fail('Changing Statuses - Balances Updated Accordingly', async (...) => {
+
+// BLOCKED-BY #13: uncomment when fixed
+// await expect(auditRows).toHaveLength(1)
+```
+
+When the dev lane fixes issue #N, it runs `grep -rn "BLOCKED-BY #N" e2e/`. For each hit it
+may **only** delete the tag line and either change `test.fail(` → `test(` on the next line,
+or uncomment the contiguous commented block directly below the tag.
+- Put this in its own commit (`Unblock CUJ-NN: #N fixed`) so QA can review it separately.
+- If CI then fails that spec, revert the unblock commit and report back. Never edit test
+  logic or assertions to make it pass.
+- QA's step 4 (flake check) still applies before merge.
+
+Prefer `test.fail` over commented-out assertions: only `test.fail` produces the automatic
+"Expected to fail, but passed" signal.
 
 `main` is protected by the "main: PR + CI required" ruleset: PRs only, "Lint, build, test" and
 "E2E (Playwright)" must pass on a branch that is up to date with `main`, no bypass. Never try to
