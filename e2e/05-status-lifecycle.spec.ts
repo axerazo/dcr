@@ -16,8 +16,7 @@ test.describe('CUJ-05: Transaction status lifecycle — pending → cleared; ava
     // Traceability: SPEC §9 Formula B, §10, §11 ready-to-close.
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // Expected to fail until app bug #17 is fixed (status menu covered by later rows). Remove `.fail` once it passes.
-    test.fail('Changing Statuses - Balances Updated Accordingly', async ({ page, register, seed }) => {
+    test('Changing Statuses - Balances Updated Accordingly', async ({ page, register, seed }) => {
         const startingBalance = seed.openingBalance
         const { month, year } = seed                        // 1-based month, from the pinned `now`
 
