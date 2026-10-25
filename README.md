@@ -4,7 +4,7 @@
 
 > **Status:** Active development, personal project. Not deployed. Not production-ready.
 
-Most projects that use an LLM verify the output by looking at it. This one doesn't. Every figure the AI-assisted reconciliation engine produces is diffed against an independently built ground-truth oracle, continuously, as the system evolves.
+Most projects that use an LLM verify the output by looking at it. This one is built to do better: the calculation engine is diffed against an independently built ground-truth oracle, continuously, as the system evolves, and the same discipline is planned for the AI-assisted reconciliation layer once it is re-planned.
 
 The finance application is the system under test. The validation approach is the point.
 
@@ -39,8 +39,8 @@ The second case is the more useful one. A validation strategy that can only ever
 - Six-state transaction lifecycle (recorded, scheduled, in-flight, pending, cleared, void)
 - Computed running balance, current balance, and available balance — distinct concepts, separately computed
 - Month-by-month carry-forward with a four-state lifecycle (open → ready_to_close → soft_closed → hard_closed)
-- AI-assisted daily reconciliation: surfaces gaps between register and bank state, suggests matches, lets the user decide
-- Audit log for every state transition, including silent updates
+- AI-assisted reconciliation (prototype, being re-planned): surfaces gaps between register and bank state, suggests matches, lets the user decide
+- Append-only audit log for state transitions (void, status-change and edit entries are known gaps: [#12](https://github.com/axerazo/dcr/issues/12), [#13](https://github.com/axerazo/dcr/issues/13))
 - Multi-account ready (single-account in active use)
 
 ## Architecture highlights
