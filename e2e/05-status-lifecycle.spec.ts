@@ -16,11 +16,11 @@ test.describe('CUJ-05: Transaction status lifecycle — pending → cleared; ava
     // Traceability: SPEC §9 Formula B, §10, §11 ready-to-close.
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    test('Changing Statuses - Balances Updated Accordingly', async ({ page, register, seed }) => {
+    test('Changing Statuses - Balances Updated Accordingly', async ({ register, seed }) => {
         const startingBalance = seed.openingBalance
         const { month, year } = seed                        // 1-based month, from the pinned `now`
 
-        await expect(page.getByRole('cell', { name: '$' })).toHaveText(money(startingBalance))
+        await expect(register.openingBalance).toHaveText(money(startingBalance))
         await expect(register.actualBalance).toHaveText(money(startingBalance))
         await expect(register.availableBalance).toHaveText(money(startingBalance))
 
