@@ -102,6 +102,11 @@ Two git worktrees of the same repo, each with its own branch and Claude session:
   reference the issue (`Fixes #N`) in the PR.
 - A new worktree needs its own setup: `npm ci`, `npm run env:test`, and a copy of
   `.env.local` (both env files are gitignored).
+- **Session-start sync check:** `.claude/settings.json` runs `.claude/hooks/sync-check.sh` when
+  every session starts. It fetches and reports whether the checkout is behind `origin/main`. It
+  never pulls: when it reports "behind", tell the user first and pull, rebase or switch only after
+  a yes. Locally, VS Code's `git.autofetch` (in each folder's gitignored `.vscode/settings.json`)
+  shows the same thing as a ↓N count in the status bar.
 
 ### Planning → issues (where tasks come from)
 
@@ -119,7 +124,11 @@ Never add the Excel workbook or anything derived from it (Hard rule 3).
 ### PR flow: dev → QA → merge (the PR is the meeting point)
 
 1. **Dev lane** opens the PR as a **draft**, referencing the issue (`Fixes #N`). CI runs the
-   full E2E suite on the branch.
+   full E2E suite on the branch. Once pushed, the dev lane **releases the branch**
+   (`git switch --detach origin/main`). Git allows a branch to be checked out in only one
+   worktree, so otherwise the test lane's `gh pr checkout <N>` fails with "already used by
+   worktree". If the dev lane needs more commits later, it checks the branch out again only
+   after confirming the test lane isn't on it.
 2. If the bug was found by a spec marked `test.fail(...)`, CI reports **"Expected to fail,
    but passed"**. That red result means the fix works and is the hand-off signal to QA,
    not a regression.
@@ -129,10 +138,16 @@ Never add the Excel workbook or anything derived from it (Hard rule 3).
      the change and pushes to the same PR.
 4. **QA's last step before merging:** `npm run test:e2e:flake` (3x, no retries, TEST_PLAN §6)
    on the affected specs. CI allows retries, so a CI pass alone doesn't meet §6.
-5. **Merge via auto-merge:** after the flake check passes, the user marks the PR ready and clicks
-   **"Enable auto-merge"** (or `gh pr merge <N> --auto --merge`). GitHub merges by itself once
-   every required check is green and deletes the branch. Then run `git switch main && git pull`
-   in the test lane. Claude never enables auto-merge; that click is QA's sign-off.
+5. **Merge (QA's sign-off):** after the flake check passes, the user clicks **Ready for review**
+   (the button in the merge box at the bottom of the Conversation tab; or `gh pr ready <N>`), then:
+   - **Checks already green:** GitHub offers only **Squash and merge**. Use it.
+   - **Checks still running** (e.g. right after a push or "Update branch"): GitHub shows
+     **Enable auto-merge** (or `gh pr merge <N> --auto --squash`) and merges by itself once every
+     required check passes.
+
+   Merged branches are deleted automatically. Then run `git switch main && git pull` in the test
+   lane. Claude never merges and never enables auto-merge; that click is QA's sign-off. Squash
+   merging is the convention: each PR lands as one commit ending in `(#N)`.
 
 #### `BLOCKED-BY #N`: pre-authorized spec unblocks
 

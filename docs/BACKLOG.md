@@ -14,6 +14,16 @@
   - Also worth a case (from `monthStatus.ts`, not from the spreadsheet): voiding the last uncleared row of a month should take it open -> ready_to_close, because void is excluded from the uncleared count.
   - Dependency: when the void audit gap is fixed (issue #12), every case also needs an audit assertion and the teardown expectation changes (TEST_PLAN section 6).
 
+- **Build warning: Anthropic SDK pulls `node:fs` / `node:path` into the browser bundle** (touches-core)
+  - Seen in every production build (`build:test`, CI E2E). Vite externalizes them from the `@anthropic-ai/sdk` credential modules. Harmless but noisy.
+  - Root cause: the SDK runs browser-side (`dangerouslyAllowBrowser`, CLAUDE.md hard rule 4).
+  - Fix: Phase 2's Supabase Edge Function proxy removes the SDK from the browser bundle, and the warning goes with it. Don't add a Vite shim just to silence it.
+
+- **Build warning: main JS chunk > 500 kB** (UI-only)
+  - `dist/assets/index-*.js` is about 655 kB minified (181 kB gzip), likely mostly the Anthropic SDK.
+  - Revisit after the Edge Function proxy lands, since the bundle should shrink. If it's still large, code-split with dynamic `import()` (e.g. lazy-load the reconciliation panel and yearly summary).
+  - Not a correctness issue. The E2E suite (production build in CI) is unaffected.
+
 ## **New Features**
 
 - **Option to hide voided rows** (UI-only if session-scoped; touches-data if persisted per user)
