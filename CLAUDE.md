@@ -96,10 +96,23 @@ Two git worktrees of the same repo, each with its own branch and Claude session:
   `phase1/<slug>`). After the other lane merges, rebase onto `origin/main` before merging.
 - Every PR gets the automatic Claude review (`.github/workflows/claude-code-review.yml`);
   `@claude` in PR/issue comments triggers `.github/workflows/claude.yml`. The user merges.
-- Tasks come from planning sessions and are tracked as GitHub issues; reference the issue
-  (`Fixes #N`) in the PR.
+- Tasks come from planning sessions and are tracked as GitHub issues (see "Planning → issues");
+  reference the issue (`Fixes #N`) in the PR.
 - A new worktree needs its own setup: `npm ci`, `npm run env:test`, and a copy of
   `.env.local` (both env files are gitignored).
+
+### Planning → issues (where tasks come from)
+
+Planning happens outside the repo, in a Claude app Project ("DCR Planning") that has
+`CLAUDE.md`, `SPEC.md`, `docs/e2e/TEST_PLAN.md` and `docs/BACKLOG.md` as project knowledge.
+Never add the Excel workbook or anything derived from it (Hard rule 3).
+- Each planning session ends with a list of tasks in the shape of
+  `.github/ISSUE_TEMPLATE/task.md`: summary, why, acceptance criteria (the oracle), lane,
+  SPEC/TEST_PLAN refs, and blocked-by/blocks links.
+- The user brings that list to a VS Code session, which files each task as a GitHub issue
+  (`gh issue create`), shows the issue numbers and links dependencies.
+- Issues are the backlog. Lanes pick them up by number; nothing is re-explained.
+- Decisions that change how we work go into this file (via PR), not just into chat.
 
 ### PR flow: dev → QA → merge (the PR is the meeting point)
 
@@ -114,7 +127,10 @@ Two git worktrees of the same repo, each with its own branch and Claude session:
      the change and pushes to the same PR.
 4. **QA's last step before merging:** `npm run test:e2e:flake` (3x, no retries, TEST_PLAN §6)
    on the affected specs. CI allows retries, so a CI pass alone doesn't meet §6.
-5. CI green → mark ready → the user merges, then `git switch main` in the test lane.
+5. **Merge via auto-merge:** after the flake check passes, the user marks the PR ready and clicks
+   **"Enable auto-merge"** (or `gh pr merge <N> --auto --merge`). GitHub merges by itself once
+   every required check is green and deletes the branch. Then run `git switch main && git pull`
+   in the test lane. Claude never enables auto-merge; that click is QA's sign-off.
 
 #### `BLOCKED-BY #N`: pre-authorized spec unblocks
 
@@ -141,7 +157,9 @@ Prefer `test.fail` over commented-out assertions: only `test.fail` produces the 
 
 `main` is protected by the "main: PR + CI required" ruleset: PRs only, "Lint, build, test" and
 "E2E (Playwright)" must pass on a branch that is up to date with `main`, no bypass. Never try to
-push to `main` directly.
+push to `main` directly. When another PR merges first, the waiting PR needs **"Update branch"**
+on GitHub, after which CI reruns and auto-merge proceeds. Repo settings: auto-merge allowed;
+merged branches are deleted automatically.
 
 ## E2E tests (Playwright)
 
