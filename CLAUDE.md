@@ -45,7 +45,8 @@ it governs, and cite the section (e.g., "SPEC §9") in commit messages when rele
 - `scripts/write-env-test.mjs` (`npm run env:test`) — reads `supabase status` and writes the
   local Supabase URL/keys (including the service-role key) into `.env.test`
 - `docs/` — `BACKLOG.md` (known gaps and bugs), `DCR_Phase0_Audit.md`, `e2e/TEST_PLAN.md`,
-  `golden-master/`
+  `golden-master/`, `PLANNING_HANDOFF.md`
+- `planning/PLAN.md` — rolling planning file (cases between planning chats)
 - Transaction lifecycle (six states): recorded, scheduled, in_flight, pending,
   cleared, void. Void rows: balance = null, excluded from all balance math.
 
@@ -117,13 +118,15 @@ Two git worktrees of the same repo, each with its own branch and Claude session:
 
 ### Planning → issues (where tasks come from)
 
-Planning happens outside the repo, in a Claude app Project ("DCR Planning") that has
-`CLAUDE.md`, `SPEC.md`, `docs/e2e/TEST_PLAN.md` and `docs/BACKLOG.md` as project knowledge.
+Planning happens outside the repo, in a Claude app Project ("DCR Planning"). Each planning
+chat reads the docs from a fresh clone of the repo, so none are kept as project knowledge (a
+copy would go stale). The rolling file `planning/PLAN.md` carries the cases between chats;
+`docs/PLANNING_HANDOFF.md` is the contract for that file and for filing issues from it.
 Never add the Excel workbook or anything derived from it (Hard rule 3).
-- Each planning session ends with a list of tasks in the shape of
-  `.github/ISSUE_TEMPLATE/task.md`: summary, why, acceptance criteria (the oracle), lane,
-  SPEC/TEST_PLAN refs, and blocked-by/blocks links.
-- The user brings that list to a VS Code session, which files each task as a GitHub issue
+- Each planning session ends with the full updated `planning/PLAN.md`, committed via a docs PR.
+  Each case in it has the shape of `.github/ISSUE_TEMPLATE/task.md`: summary, why, acceptance
+  criteria (the oracle), lane, SPEC/TEST_PLAN refs, and blocked-by/blocks links.
+- When the user asks, a VS Code session files only the cases marked `Ready` as GitHub issues
   (`gh issue create`), shows the issue numbers and links dependencies.
 - Issues are the backlog. Lanes pick them up by number; nothing is re-explained.
 - Decisions that change how we work go into this file (via PR), not just into chat.
