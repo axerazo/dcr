@@ -18,7 +18,7 @@
   - Open question (confirm before building): `TransactionStatus` has six values. The row status menu offers Recorded, Pending, Cleared and Void, plus Scheduled only when the row has a scheduled date. `in_flight` is not offered. Decide which starting statuses are in scope.
   - Test-writing rules: use literal expected movements from the SPEC, not re-implemented formulas (keeps the oracle independent), and assert the chosen status on the row before voiding (guards against a vacuous pass).
   - Also worth a case (from `monthStatus.ts`, not from the spreadsheet): voiding the last uncleared row of a month should take it open -> ready_to_close, because void is excluded from the uncleared count.
-  - Dependency: when the void audit gap is fixed (issue #12), every case also needs an audit assertion and the teardown expectation changes (TEST_PLAN section 6).
+  - Audit: voids now write a `voided` audit row (issue #12), so every case can assert one (`value_before` = the starting status, `value_after` = `void`), and each case's user stays in the local database after the run (TEST_PLAN section 6).
 
 - **Build warning: Anthropic SDK pulls `node:fs` / `node:path` into the browser bundle** (touches-core)
   - Seen in every production build (`build:test`, CI E2E). Vite externalizes them from the `@anthropic-ai/sdk` credential modules. Harmless but noisy.
