@@ -79,6 +79,28 @@ it governs, and cite the section (e.g., "SPEC §9") in commit messages when rele
 - The `.claude/agents/code-quality-reviewer.md` subagent should be invoked after
   significant changes; it keeps project memory.
 
+## Parallel workflow (two lanes)
+
+Two git worktrees of the same repo, each with its own branch and Claude session:
+
+| Folder | Lane | Scope |
+| --- | --- | --- |
+| `C:\workspace\dcr` | Test lane (user writes, Claude reviews) | `e2e/` specs; E2E PRs never touch `src/` |
+| `C:\workspace\dcr-dev` | Dev lane (Claude writes, user reviews) | `src/`, golden-master, docs, bug fixes |
+
+- Check `git worktree list` / the current folder before acting; stay in your lane's folder.
+- Both lanes share one local Supabase stack and port 5173 (`dev:test` is `--strictPort`).
+  **Only the test lane runs E2E**; the dev lane verifies with Vitest + build. If a dev-lane
+  fix needs E2E confirmation, hand off to the test lane.
+- Branch from `origin/main`, one branch per task (`fix/<issue>-<slug>`, `docs/<slug>`,
+  `phase1/<slug>`). After the other lane merges, rebase onto `origin/main` before merging.
+- Every PR gets the automatic Claude review (`.github/workflows/claude-code-review.yml`);
+  `@claude` in PR/issue comments triggers `.github/workflows/claude.yml`. The user merges.
+- Tasks come from planning sessions and are tracked as GitHub issues; reference the issue
+  (`Fixes #N`) in the PR.
+- A new worktree needs its own setup: `npm ci`, `npm run env:test`, and a copy of
+  `.env.local` (both env files are gitignored).
+
 ## E2E tests (Playwright)
 
 The E2E suite covers twelve Critical User Journeys (CUJs) and no more. The plan lives in
