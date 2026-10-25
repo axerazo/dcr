@@ -5,7 +5,7 @@
 // scheduled_date column is the single source of truth.
 // ============================================================
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react'
 import { StatusIcon, statusRowClass } from '@/components/ui/StatusIcon'
 import { AutocompleteInput } from '@/components/ui/AutocompleteInput'
 import { formatCurrency, parseCurrencyInput } from '@/lib/balance'
@@ -518,6 +518,23 @@ export function NewTransactionRow({
   const notesRef        = useRef<HTMLInputElement>(null)
   const schedDateRef    = useRef<HTMLInputElement>(null)
 
+  // Bumped by activate() and resetAndContinue() to move focus to Date.
+  const [focusDateRequest, setFocusDateRequest] = useState(0)
+
+  // Focus Date in a layout effect, i.e. synchronously inside the click/Enter that
+  // opened or reset the row. A deferred focus (setTimeout) could fire after the user
+  // had already started typing in another field and steal the keystrokes (#27).
+  // Focus runs first so the browser's built-in focus-scroll (block: nearest) fires,
+  // then requestAnimationFrame scrolls to center — after the browser's layout pass —
+  // so our scroll always wins over the browser's default.
+  useLayoutEffect(() => {
+    if (focusDateRequest === 0) return
+    dateRef.current?.focus()
+    requestAnimationFrame(() => {
+      rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }, [focusDateRequest])
+
   // Autocomplete — only fires when 2+ chars typed; returns [] otherwise
   const descSuggestions  = useSuggestions(accountId, 'description', draft.description)
   const notesSuggestions = useSuggestions(accountId, 'notes',       draft.notes)
@@ -533,20 +550,12 @@ export function NewTransactionRow({
   }
 
   // Save-and-continue: reset draft, keep row open, re-focus Date, then scroll.
-  // Focus runs first so the browser's built-in focus-scroll (block: nearest) fires,
-  // then requestAnimationFrame scrolls to center — after React's commit and the
-  // browser's layout pass — so our scroll always wins over the browser's default.
   function resetAndContinue() {
     setDraft(blankDraft())
     setDraftStatus('recorded')
     setDebitCreditError(false)
     setConfirmDiscard(false)
-    setTimeout(() => {
-      dateRef.current?.focus()
-      requestAnimationFrame(() => {
-        rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      })
-    }, 0)
+    setFocusDateRequest((n) => n + 1)
   }
 
   function deactivate() {
@@ -559,12 +568,7 @@ export function NewTransactionRow({
 
   function activate() {
     setActive(true)
-    setTimeout(() => {
-      dateRef.current?.focus()
-      requestAnimationFrame(() => {
-        rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      })
-    }, 0)
+    setFocusDateRequest((n) => n + 1)
   }
 
   // notesOverride is passed by the notes AutocompleteInput onAccept so
