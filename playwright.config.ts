@@ -13,9 +13,14 @@ import { STORAGE_STATE_PATH } from './e2e/fixtures/paths'
 const isCI = Boolean(process.env.CI)
 const BASE_URL = 'http://127.0.0.1:5173'
 
-// E2E_TARGET=preview tests the production build (vite build + vite preview)
-// instead of the dev server. CI always sets it: what passes is what ships.
-const usePreview = process.env.E2E_TARGET === 'preview'
+// Production build (vite build + vite preview) instead of the dev server, so
+// what passes is what ships. On for CI (E2E_TARGET=preview) and for the
+// pre-merge QA gate `npm run test:e2e:flake`, which npm identifies via
+// npm_lifecycle_event. (npm runs scripts through cmd.exe on Windows, so a
+// script can't portably set E2E_TARGET inline.)
+const usePreview =
+  process.env.E2E_TARGET === 'preview' ||
+  process.env.npm_lifecycle_event === 'test:e2e:flake'
 
 // Surfaced on every run so the target is never in doubt in a CI log.
 console.log(`[e2e] Supabase target: ${env.supabaseUrl}`)
