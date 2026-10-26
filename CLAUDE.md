@@ -126,8 +126,9 @@ Never add the Excel workbook or anything derived from it (Hard rule 3).
 - Each planning session ends with the full updated `planning/PLAN.md`, committed via a docs PR.
   Each case in it has the shape of `.github/ISSUE_TEMPLATE/task.md`: summary, why, acceptance
   criteria (the oracle), lane, SPEC/TEST_PLAN refs, and blocked-by/blocks links.
-- When the user asks, a VS Code session files only the cases marked `Ready` as GitHub issues
-  (`gh issue create`), shows the issue numbers and links dependencies.
+- When the user asks, the planning chat files only the cases marked `Ready` as GitHub issues
+  through the GitHub connector (a VS Code session can do the same with `gh issue create`),
+  shows the issue numbers and links dependencies.
 - Issues are the backlog. Lanes pick them up by number; nothing is re-explained.
 - Decisions that change how we work go into this file (via PR), not just into chat.
 
