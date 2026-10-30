@@ -1,4 +1,5 @@
 // ============================================================
+// throwaway: Core guard proof B (#28)
 // Balance computation library — SPEC §9, §15
 // CRITICAL: balance is NEVER stored in the database.
 // All functions here are the single source of truth.
