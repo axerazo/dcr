@@ -2,15 +2,19 @@
 
 ## **Updates/Improvements**
 
-- **PLANNING PRIORITY: where the roll-over code lives, before the core CI guard ([#28](https://github.com/axerazo/dcr/issues/28))** (touches-core)
-  - Core = the balance calculations and the monthly roll-over (CLAUDE.md Hard rule 1). The roll-over decisions (register auto-creation, carry-forward to next month's opening, mismatch prompt) sat inside `src/components/register/RegisterView.tsx`, a UI component, so a CI guard couldn't protect them without firing on every UI change.
-  - Decided (Alex, 2026-10-29) and done in [#40](https://github.com/axerazo/dcr/issues/40): the three decisions moved to `src/lib/rollover.ts` (unit tests in `src/lib/rollover.test.ts`). The effects, refs and mutations stay in `RegisterView.tsx`.
-  - **Still roll-over logic in `RegisterView.tsx`** (out of scope for #40, so #28's path list can't drop the file yet):
+- **Roll-over logic still in `RegisterView.tsx` keeps the whole file on the core path list** (touches-core)
+  - Done: the roll-over decisions moved to `src/lib/rollover.ts` ([#40](https://github.com/axerazo/dcr/issues/40)). The `Core guard` check ([#28](https://github.com/axerazo/dcr/issues/28)) guards paths listed in `.github/core-paths.txt`.
+  - **Still roll-over logic in `RegisterView.tsx`**, so the file stays on the list and every UI change to it trips the guard:
     - `doSoftClose`: the next-month opening update on Close & Archive ("Use closing" path; skipped when next month `is_locked`).
     - `handleMismatchUseClosing`: the archived-next-month block (shows the inline message instead of updating).
     - Related close-flow decisions, also left in place: `isHappyClose` (happy vs unhappy close prompt) and the stale `soft_closed` → `hard_closed` auto-correction.
-  - Options for #28: keep `RegisterView.tsx` in the guard's path list, or extract these into `rollover.ts` in a follow-up issue first.
-  - Then #28's second question: a required label, or a failing check that a label clears.
+  - Same for `src/hooks/useRegister.ts`: only `useMostRecentRegisterBefore` is core, but the guard matches the whole file.
+  - Option: extract these into `rollover.ts` in a follow-up issue, then drop `RegisterView.tsx` from the list.
+
+- **Core guard: an approval label survives later commits** (CI-only; no legend tag applies)
+  - Today `core-change-approved` stays on a PR after new pushes, so commits made after approval are approved too. CLAUDE.md's PR flow covers this by process: apply the label only as the last step before merging, after the final commit.
+  - Possible hardening: have the guard remove the label on `synchronize`, so every new commit needs fresh approval. That needs `pull-requests: write` (today the workflow has read only), and the label must then be re-applied after any "Update branch".
+  - Required check: the user adds `Core guard` to the "main: PR + CI required" ruleset after #28 merges. Until then, a failing guard is visible but doesn't block merging.
 
 - **Roll-over: auto-update runs while this month is `ready_to_close`, the mismatch prompt doesn't** (touches-core, needs-decision)
   - `shouldAutoUpdateNextOpening` (`src/lib/rollover.ts`) skips only a soft/hard-closed current month, so it still carries forward in `ready_to_close`. `shouldShowMismatchPrompt` requires `open`.

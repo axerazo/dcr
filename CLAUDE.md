@@ -44,6 +44,8 @@ it governs, and cite the section (e.g., "SPEC §9") in commit messages when rele
   migration, always add a new numbered one
 - `scripts/write-env-test.mjs` (`npm run env:test`) — reads `supabase status` and writes the
   local Supabase URL/keys (including the service-role key) into `.env.test`
+- `scripts/core-guard.mjs` + `.github/workflows/core-guard.yml` — the `Core guard` PR check;
+  reads the core path list from `.github/core-paths.txt` (Hard rule 1)
 - `docs/` — `BACKLOG.md` (known gaps and bugs), `DCR_Phase0_Audit.md`, `e2e/TEST_PLAN.md`,
   `golden-master/`, `PLANNING_HANDOFF.md`
 - `planning/PLAN.md` — rolling planning file (cases between planning chats)
@@ -56,12 +58,14 @@ it governs, and cite the section (e.g., "SPEC §9") in commit messages when rele
    the full test suite green BEFORE and AFTER, and new/updated tests covering the
    change.** These files are the product. Treat every edit as high-risk.
    **Core = the balance calculations and the monthly roll-over**, and it is protected at all
-   cost. Besides the two files above, the roll-over lives in `src/components/register/RegisterView.tsx`
-   (register auto-creation, carry-forward to next month's opening, mismatch prompt) and
+   cost. Besides the two files above, the roll-over decisions live in `src/lib/rollover.ts`
+   (register auto-creation opening, carry-forward to next month's opening, mismatch prompt),
+   with the rest of the roll-over flow still in `src/components/register/RegisterView.tsx` and
    `useMostRecentRegisterBefore` in `src/hooks/useRegister.ts`; the golden fixtures are its
-   expectations. Flag any change that touches core to the user immediately, before proceeding.
+   expectations. **The core path list lives in one place: `.github/core-paths.txt`.** Change it
+   there, not here. Flag any change that touches core to the user immediately, before proceeding.
    Everything else follows normal development. Nothing else is core (AI reconciliation
-   included) unless the user decides so. CI guard: #28.
+   included) unless the user decides so. CI guard: the `Core guard` check (see PR flow).
 2. Currency values currently use floating-point with `currencyEq` (±0.005)
    tolerance. A migration to integer cents is planned but MUST NOT begin until the
    golden-master suite exists. Until then, always use `currencyEq` for currency
@@ -149,6 +153,13 @@ Never add the Excel workbook or anything derived from it (Hard rule 3).
      the change and pushes to the same PR.
 4. **QA's last step before merging:** `npm run test:e2e:flake` (3x, no retries, TEST_PLAN §6)
    on the affected specs. CI allows retries, so a CI pass alone doesn't meet §6.
+   - **Core PRs:** the `Core guard` check fails on any PR that touches a path in
+     `.github/core-paths.txt` and names the core files in its summary. A new golden fixture on
+     its own passes; core code changed together with golden expectations gets a stronger
+     "golden master proves nothing" failure. The `core-change-approved` label clears the check.
+     **Apply `core-change-approved` only as the last step before merging, after the final
+     commit.** Only the user applies it; Claude never does. The guard runs from the base branch
+     (`pull_request_target`), so a PR's edits to the guard take effect only after it merges.
 5. **Merge (QA's sign-off):** after the flake check passes, the user clicks **Ready for review**
    (the button in the merge box at the bottom of the Conversation tab; or `gh pr ready <N>`), then:
    - **Checks already green:** GitHub offers only **Squash and merge**. Use it.

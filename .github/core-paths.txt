@@ -1,0 +1,32 @@
+# Core paths — the single source of truth for DCR's core (CLAUDE.md Hard rule 1).
+# Core = the balance calculations and the monthly roll-over. Read by
+# scripts/core-guard.mjs (the "Core guard" check, .github/workflows/core-guard.yml).
+#
+# Format: one repo-relative path per line under a [group] header. A path ending
+# in "/" matches everything below that directory; any other path matches exactly.
+# Lines starting with "#" and blank lines are ignored.
+#
+# Groups:
+#   code          the engine and the roll-over. Any change needs core-change-approved.
+#   expectations  the golden master. Newly added files under a directory entry pass
+#                 without the label when no code changed; any other change needs it.
+#                 A code change together with any expectations change gets the
+#                 combined failure (the golden master would prove nothing).
+#   guard         the guard itself. Any change needs core-change-approved.
+
+[code]
+src/lib/balance.ts
+src/lib/monthStatus.ts
+src/lib/rollover.ts
+src/components/register/RegisterView.tsx
+# Whole file: the guard can't single out useMostRecentRegisterBefore (auto-carry source).
+src/hooks/useRegister.ts
+
+[expectations]
+src/lib/__fixtures__/golden/
+src/lib/golden.test.ts
+
+[guard]
+.github/core-paths.txt
+.github/workflows/core-guard.yml
+scripts/core-guard.mjs
