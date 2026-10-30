@@ -5,7 +5,7 @@ Runbook for the two Claude GitHub workflows. Git and PR steps live in
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `.github/workflows/claude-code-review.yml` | PR marked **Ready for review** (once; later pushes don't re-run it) | Runs the `code-review` plugin and posts findings as PR comments (`claude[bot]`) |
+| `.github/workflows/claude-code-review.yml` | PR marked **Ready for review**, then every push after that; never on drafts | Runs the `code-review` plugin and posts findings as PR comments (`claude[bot]`) |
 | `.github/workflows/claude.yml` | `@claude` in an issue, PR comment or review | Does what the comment asks; can read CI results (`actions: read`) |
 
 Both authenticate with the `CLAUDE_CODE_OAUTH_TOKEN` repo secret.
@@ -51,23 +51,25 @@ skipped. The change takes effect once merged.
 
 ---
 
-## 4. A PR got no review, or needs another one
+## 4. When the review runs
 
-The review runs only on `ready_for_review` (#53): the moment a **draft** PR is marked Ready for
-review. Opening, pushing and reopening don't trigger it.
+Triggers: `ready_for_review` and `synchronize`, and the job runs only when the PR is not a draft
+(#53). Ready for review is the developer's "done" signal (CLAUDE.md "PR flow" step 4); QA's
+sign-off starts after the review has posted.
 
-- **Opened as ready, not as a draft:** no `ready_for_review` event ever fires, so no review.
-  Open PRs as drafts (CLAUDE.md "PR flow").
-- **New commits after Ready for review:** not reviewed. To review again, flip it back:
+| Event | `claude-review` |
+|---|---|
+| Draft opened, or a push to a draft | **Skipped** (grey). A run is created but the job doesn't execute: no review, no tokens |
+| Draft marked Ready for review | Runs once |
+| Push to a ready PR | Runs again, on the new commit |
+| Push while a review is still running | The older run shows **Cancelled**: a newer push replaced it, not a failure. Only the newest commit's review posts |
+| **Update branch** on a ready PR | Runs again. It's a push, even though only `main`'s changes came in. Accepted cost (BACKLOG) |
+| Converted back to draft | Nothing runs until it's marked ready again |
+| Ready PR closed and reopened | Nothing runs (`reopened` isn't a trigger). Push a commit, or flip to draft and back, to review again |
+| PR opened as ready (not a draft) | Nothing runs until the first push. Open PRs as drafts |
 
-```bash
-gh pr ready <N> --undo    # back to draft
-gh pr ready <N>           # fires ready_for_review again
-```
-
-  Or comment `@claude review this PR` (runs `claude.yml`, not the review plugin).
-- **Merging right after Ready for review:** `claude-review` is not a required check, so the merge
-  doesn't wait for it. Wait for its comment before you merge.
+`claude-review` is not a required check, so a merge doesn't wait for it. That's why reading the
+review is QA's first sign-off step.
 
 ---
 
@@ -85,4 +87,6 @@ The bot comments; it does not approve. Your merge is the sign-off (CLAUDE.md "PR
 | Review job fails at auth | Token in the secret no longer valid | §1 |
 | Green run, no comment | One of the §2 settings is missing | Restore it; debug with `show_full_output` (§2) |
 | No review on a workflow-editing PR | Workflow validation | Expected (§3) |
+| `claude-review` **Skipped** | The PR is a draft | Expected; mark it ready when done (§4) |
+| `claude-review` **Cancelled** | A newer push replaced a review still running | Not a failure; the newest commit's run posts (§4) |
 | `@claude` comment does nothing | `claude.yml` only runs when the body (or issue title) contains `@claude` | Include `@claude` in the comment itself |

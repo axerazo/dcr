@@ -108,11 +108,13 @@ Two git worktrees of the same repo, each with its own branch and Claude session:
   relies on CI for E2E (see PR flow below).
 - Branch from `origin/main`, one branch per task (`fix/<issue>-<slug>`, `docs/<slug>`,
   `phase1/<slug>`). After the other lane merges, rebase onto `origin/main` before merging.
-- Every PR gets the automatic Claude review (`.github/workflows/claude-code-review.yml`) once, when it is
-  marked Ready for review (not on draft pushes);
+- Every PR gets the automatic Claude review (`.github/workflows/claude-code-review.yml`): never on
+  drafts, once when it is marked Ready for review, and again on every push after that.
   `@claude` in PR/issue comments triggers `.github/workflows/claude.yml`. The user merges.
-- Tasks come from planning sessions and are tracked as GitHub issues (see "Planning → issues");
-  reference the issue (`Fixes #N`) in the PR.
+- Tasks come from planning sessions and are tracked as GitHub issues (see "Planning → issues").
+  Reference the issue in the PR with `Fixes #N` only when every acceptance criterion is proven
+  before merge. Otherwise use `Refs #N`, and the user closes the issue by hand once the rest is
+  proven (e.g. after-merge criteria).
 - A new worktree needs its own setup: `npm ci`, `npm run env:test`, and a copy of
   `.env.local` (both env files are gitignored).
 - **Session-start sync check:** `.claude/settings.json` runs `.claude/hooks/sync-check.sh` when
@@ -139,8 +141,9 @@ Never add the Excel workbook or anything derived from it (Hard rule 3).
 
 ### PR flow: dev → QA → merge (the PR is the meeting point)
 
-1. **Dev lane** opens the PR as a **draft**, referencing the issue (`Fixes #N`). CI runs the
-   full E2E suite on the branch. Once pushed, the dev lane **releases the branch**
+1. **Dev lane** opens the PR as a **draft**, referencing the issue (`Fixes #N` or `Refs #N`, see
+   "Parallel workflow"). The Claude review doesn't run on drafts. CI runs the full E2E suite on
+   the branch. Once pushed, the dev lane **releases the branch**
    (`git switch --detach origin/main`). Git allows a branch to be checked out in only one
    worktree, so otherwise the test lane's `gh pr checkout <N>` fails with "already used by
    worktree". If the dev lane needs more commits later, it checks the branch out again only
@@ -152,21 +155,32 @@ Never add the Excel workbook or anything derived from it (Hard rule 3).
    - **Pre-authorized (dev lane may do it):** only lines tagged `// BLOCKED-BY #N` (see below).
    - **Anything else in `e2e/`:** the test lane joins the branch (`gh pr checkout <N>`), makes
      the change and pushes to the same PR.
-4. **QA's last step before merging:** `npm run test:e2e:flake` (3x, no retries, TEST_PLAN §6)
-   on the affected specs. CI allows retries, so a CI pass alone doesn't meet §6.
-   - **Core PRs:** the `Core guard` check fails on any PR that touches a path in
-     `.github/core-paths.txt` and names the core files in its summary. A new golden fixture on
-     its own passes; core code changed together with golden expectations gets a stronger
-     "golden master proves nothing" failure. The `core-change-approved` label clears the check.
-     **Apply `core-change-approved` only as the last step before merging, after the final
-     commit.** Only the user applies it; Claude never does. The guard runs from `main`
-     (`pull_request_target`), so a PR's edits to the guard take effect only after it merges.
-5. **Merge (QA's sign-off):** after the flake check passes, the user clicks **Ready for review**
-   (the button in the merge box at the bottom of the Conversation tab; or `gh pr ready <N>`), then:
-   - **Checks already green:** GitHub offers only **Squash and merge**. Use it.
-   - **Checks still running** (e.g. right after a push or "Update branch"): GitHub shows
-     **Enable auto-merge** (or `gh pr merge <N> --auto --squash`) and merges by itself once every
-     required check passes.
+4. **Ready for review is the "dev is done" signal.** When the work is done (tests, build and lint
+   green, PR description complete, any unblock commit pushed), the lane that wrote the PR marks it
+   ready: `gh pr ready <N>`. For `src/` PRs that is the dev lane; **test-lane (E2E) PRs follow the
+   same pattern**: open as a draft, mark ready when the spec is done. Marking ready starts the
+   Claude review, and every later push re-runs it. Claude still never merges and never applies
+   `core-change-approved`.
+5. **QA's sign-off starts after the review has posted**, in this order:
+   1. **Read the review** (the `claude[bot]` comment). Fixes go on the same branch; the push is
+      reviewed again automatically.
+   2. **Manual steps**, if the PR description lists any.
+   3. **`npm run test:e2e:flake`** (3x, no retries, TEST_PLAN §6) on the affected specs. CI allows
+      retries, so a CI pass alone doesn't meet §6.
+   4. **Core PRs only: `core-change-approved` last.** The `Core guard` check fails on any PR that
+      touches a path in `.github/core-paths.txt` and names the core files in its summary. A new
+      golden fixture on its own passes; core code changed together with golden expectations gets
+      a stronger "golden master proves nothing" failure. The `core-change-approved` label clears
+      the check.
+      **Apply `core-change-approved` only as the last step before merging, after the final
+      commit.** Only the user applies it; Claude never does. The guard runs from `main`
+      (`pull_request_target`), so a PR's edits to the guard take effect only after it merges.
+   5. **Merge:**
+      - **Checks already green:** GitHub offers only **Squash and merge**. Use it.
+      - **Checks still running** (e.g. right after a push or "Update branch"): GitHub shows
+        **Enable auto-merge** (or `gh pr merge <N> --auto --squash`) and merges by itself once
+        every required check passes. Because reading the review is step 1, auto-merge is only
+        ever enabled after the review has posted (`claude-review` is not a required check).
 
    Merged branches are deleted automatically. Then run `git switch main && git pull` in the test
    lane. Claude never merges and never enables auto-merge; that click is QA's sign-off. Squash
@@ -190,7 +204,7 @@ or uncomment the contiguous commented block directly below the tag.
 - Put this in its own commit (`Unblock CUJ-NN: #N fixed`) so QA can review it separately.
 - If CI then fails that spec, revert the unblock commit and report back. Never edit test
   logic or assertions to make it pass.
-- QA's step 4 (flake check) still applies before merge.
+- QA's sign-off (PR flow step 5, including the flake check) still applies before merge.
 
 Prefer `test.fail` over commented-out assertions: only `test.fail` produces the automatic
 "Expected to fail, but passed" signal.

@@ -1,12 +1,19 @@
 name: Claude Code Review
 
+# Never on drafts; once when marked Ready for review, then again on every push (#53).
+# A draft push still creates a run, with the job shown as Skipped.
 on:
   pull_request:
-    # Only when a draft is marked Ready for review, not on every push (#53).
-    types: [ready_for_review]
+    types: [ready_for_review, synchronize]
+
+# A newer push cancels a review still running for an older commit.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   claude-review:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
