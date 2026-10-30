@@ -153,3 +153,4 @@ export function parseCurrencyInput(raw: string): number | null {
   // Round to 2 decimal places
   return Math.round(n * 100) / 100
 }
+// throwaway #28 proof B — never merge
