@@ -22,6 +22,23 @@
   - Per SPEC §11's status table, `is_locked = true` goes with `soft_closed`/`hard_closed`, so the two should coincide. A locked-but-not-archived next month would show a prompt whose "Use closing" action then updates it. (`handleMismatchUseClosing` checks archive status only, too.)
   - Decide: should both decisions key on the same condition (archive status, `is_locked`, or both)? Pinned by `rollover.test.ts` ("next month locked → no update", "next month locked but not archived → still shows").
 
+- **SPEC drift: the mismatch prompt also fires for a previously closed next month** (touches-core, needs-decision)
+  - SPEC §11 "Unhappy Path Prompt Suppression Rule" lists only `is_manual_opening = true` as the next-month trigger, and suppresses the prompt when it is `false`.
+  - `shouldShowMismatchPrompt` (`src/lib/rollover.ts`) also shows it when `last_closed_type !== null`, meaning the next month was soft or hard closed and is now reopened, even if `is_manual_opening = false`. The code comment cites SPEC §2 ("never silently overwrite a balance that was part of a committed record"), so the code looks intentional and the SPEC wording looks stale.
+  - Decide: update the SPEC to name both triggers, or narrow the code to the SPEC? Pinned by `rollover.test.ts` ("next month previously closed (soft|hard), now open → shows").
+
+- **SPEC drift: silent carry-forward is blocked by more than `is_locked`** (touches-core, needs-decision)
+  - SPEC §11 "Opening Balance Carry-Forward Rule" says changes to the prior month's closing balance silently update the next month's opening "regardless of the prior month's archive state", and that it "**Never** updates a next month whose `is_locked = true`". `is_locked` is the only block it names.
+  - `shouldAutoUpdateNextOpening` is more conservative. It also skips when:
+    - this month is soft or hard closed (an archived prior month doesn't carry, which contradicts "regardless of the prior month's archive state")
+    - next month is archived
+    - next month was previously closed (`last_closed_type !== null`)
+    - next month's opening was entered by hand (`is_manual_opening`)
+
+    The last two cases go to the mismatch prompt instead (SPEC §2: nothing changes without user knowledge).
+  - Also relevant to CUJ-09 (edit cascade): the SPEC's "ripples forward through all subsequent months" doesn't hold past a manually entered, previously closed or archived month.
+  - Decide: update the SPEC to list the code's guards, or change the code? Pinned by `rollover.test.ts` (the `shouldAutoUpdateNextOpening` cases).
+
 - **E2E: void x status matrix** (test-only, no `src/` change; no legend tag applies)
   - Analysis: `CUJ-03_void_matrix_analysis.xlsx` (Matrix sheet). Summary below.
   - Why: CUJ-03 exercises one cell only (recorded debit -> void). SPEC section 10 says void is available from any status.
