@@ -133,10 +133,10 @@ chat reads live state from GitHub (open issues with labels, PRs merged since the
 go stale). `docs/PLANNING_HANDOFF.md` is the contract for sessions and for filing issues.
 Never add the Excel workbook or anything derived from it (Hard rule 3).
 - **Issues are the backlog; labels are the status.** There is no planning file
-  (`planning/PLAN.md` was retired 2026-10-30). An issue is ready when it is open, has a
-  `lane:*` label, and has neither `blocked` nor `needs-decision`. Decisions on an issue go in a
-  planning comment; comments supersede the body. Ideas not ready to be tasks go in
-  `docs/BACKLOG.md`.
+  (`planning/PLAN.md` was retired 2026-10-30). An issue is ready when it has the `ready`
+  label, which never sits with `blocked` or `needs-decision`. PRs carry no status labels; the
+  only PR label is `core-change-approved`. Decisions on an issue go in a planning comment;
+  comments supersede the body. Ideas not ready to be tasks go in `docs/BACKLOG.md`.
 - Each issue has the shape of `.github/ISSUE_TEMPLATE/task.md`: summary, why, acceptance
   criteria (the oracle), lane, closing (`Fixes` or `Refs`, stated up front), SPEC/TEST_PLAN
   refs, and blocked-by/blocks links.

@@ -77,20 +77,24 @@ Rules for content:
 
 ## 4. Labels are the status
 
-**Ready** = open, has a `lane:*` label, and has neither `blocked` nor `needs-decision`. There is
-no separate "ready" label: removing the last blocker is what makes an issue ready.
+**Ready** = the issue has the `ready` label. The planning chat adds it once the issue has a
+`lane:*` label and nothing blocks it. `ready` never sits with `blocked` or `needs-decision`:
+adding either one removes `ready`. An issue carrying both is a mismatch for the session-start
+report (section 2).
 
 An issue's labels:
 - one type label: `bug`, `enhancement`, `maintenance` or `documentation`;
 - any BACKLOG legend tags that apply: `touches-core`, `touches-data`, `UI-only`;
 - the lane label from its Lane section: `lane:dev`, `lane:test` or `lane:both`. The body
   stays the single source, so the body and the labels cannot disagree;
+- `ready` when it can be picked up (above);
 - optionally `ci` (workflow or CI config), `flaky` (intermittent test failure),
   `blocked` (only while a `Blocked by` issue is open) or `needs-decision` (only while an
   open question remains). Remove the last two as soon as they stop being true.
 
-`core-change-approved` is a PR label, not an issue label. It clears the `Core guard` check
-(#28), and only Alex applies it. GitHub's default labels (`duplicate`, `question`,
+**PRs carry no status labels** (Alex, 2026-10-30). A PR's state is GitHub's own: draft, then
+Ready for review (the lane's "done"), then merged (Alex's sign-off). The only PR label is
+`core-change-approved`, which clears the `Core guard` check (#28); only Alex applies it. GitHub's default labels (`duplicate`, `question`,
 `wontfix` and so on) exist and are used only when they fit.
 
 ## 5. Rules for filing
@@ -139,6 +143,7 @@ Settled afterwards (Alex, 2026-10-26):
 Settled (Alex, 2026-10-30):
 - `planning/PLAN.md` is retired; issues are the backlog and labels are the status (#56).
 - The Core guard's override label is `core-change-approved` (#28, merged in #46).
+- The `ready` label marks a ready issue. PRs carry no status labels.
 
 Still open:
 - Add the optional `## Open for planning` and `## Closing` sections to
