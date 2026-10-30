@@ -1,4 +1,5 @@
 // ============================================================
+// throwaway: Core guard proof A (#28)
 // Month roll-over decisions — SPEC §2, §11
 //
 // Pure predicates for the monthly roll-over: what a newly auto-created
