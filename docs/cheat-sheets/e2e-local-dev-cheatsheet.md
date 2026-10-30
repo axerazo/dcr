@@ -88,6 +88,48 @@ Dates must fall in the current month. Edit the rows to whatever state you need.
 
 ---
 
+## 3. Manual QA login (fixed user, recreated on every reset)
+
+**Why:** manual checks (e.g. #41's mismatch-prompt steps) need a signed-in user with data,
+and E2E users are random per test. `supabase/seed.sql` recreates this one on every
+`supabase db reset` (so also `npm run test:e2e:clean`) and on a fresh `supabase start`.
+
+| | |
+|---|---|
+| Email | `qa-manual@example.test` |
+| Password | `dcr-qa-manual-local` (local stack only, not a real credential) |
+| Account | **QA Checking** (QA Test Bank) |
+
+**Use it:** `npm run dev:test`, open `http://127.0.0.1:5173`, sign in with the above.
+
+**Data:** month **M** = the month of the last reset. It's open with a $2,500.00 carried
+opening (not manually entered), plus one row per stored status. All amounts are fabricated
+(Hard rule 3).
+
+| # | Day | Description | Status | Debit | Credit |
+|---|---|---|---|---|---|
+| 1 | 1 | Paycheck | Cleared | | 1,800.00 |
+| 2 | 2 | Rent (check 1041) | Cleared | 1,200.00 | |
+| 3 | 3 | Grocery store | Pending | 86.42 | |
+| 4 | 4 | Electric bill | In flight (scheduled 2 days before the reset) | 94.17 | |
+| 5 | 5 | Internet service | Scheduled (2 days after the reset) | 59.99 | |
+| 6 | 6 | Duplicate charge | Void (no balance) | 42.00 | |
+| 7 | 7 | Coffee shop | Recorded | 4.75 | |
+
+- **Closing balance of M: $2,854.67** (last amount-bearing non-void row, status-blind).
+- **M+1 is not seeded.** Navigate to it once and the app auto-carries it, with opening =
+  $2,854.67. That's step 1 of the #41 mismatch-prompt checks.
+- **Dates are relative to the reset, not to today.** After a month boundary, M is last
+  month: navigate back to it, or reset again (`npm run test:e2e:clean`) to get a fresh M.
+  A scheduled row also turns in-flight once its date passes, as in the real app.
+- The reset uses the database clock (UTC). Reset close to midnight UTC at a month's end and
+  M may be a different month from the one your browser shows.
+- **Don't sign up this email by hand.** A hand-made user with the same email is wiped by
+  the next reset and replaced by the seeded one.
+- No E2E spec may use this user; E2E seeds its own users per test.
+
+---
+
 ## Quick reference
 
 | Symptom | Fix |
@@ -95,4 +137,5 @@ Dates must fall in the current month. Edit the rows to whatever state you need.
 | `npm ci` → `EPERM … unlink …lightningcss….node` | §1: find the PID on 5173, `taskkill`, retry |
 | Port 5173 already in use | §1 |
 | Want to poke the UI as a logged-in seeded user | §2 |
+| Need a fixed login with roll-over data for manual checks | §3: `qa-manual@example.test` / `dcr-qa-manual-local` |
 | A `confirm()` (e.g. Void) does nothing in a Playwright browser | Playwright auto-dismissed it; add `page.on('dialog', …)` |
