@@ -88,7 +88,7 @@ git push -u origin [branch name]
 ## 8. Open the PR
 
 ```bash
-gh pr create --fill                     # or open the compare URL GitHub prints after the push
+gh pr create --draft --fill             # or open the compare URL GitHub prints after the push
 ```
 
 ## 9. Review, wait for CI, merge
