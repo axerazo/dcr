@@ -3,10 +3,24 @@
 ## **Updates/Improvements**
 
 - **PLANNING PRIORITY: where the roll-over code lives, before the core CI guard ([#28](https://github.com/axerazo/dcr/issues/28))** (touches-core)
-  - Core = the balance calculations and the monthly roll-over (CLAUDE.md Hard rule 1). The roll-over decisions (register auto-creation, carry-forward to next month's opening, mismatch prompt) sit inside `src/components/register/RegisterView.tsx`, a UI component, so a CI guard can't protect them without firing on every UI change.
-  - Discuss first: move them out of `RegisterView.tsx`, likely into a pure `src/lib/` module next to `balance.ts`? Alex leans yes; **not decided**.
-  - Weigh before deciding: the move is itself a core change (Hard rule 1: full suite green before and after, new tests); which layer covers the extracted logic (golden master, new unit tests, E2E CUJ-04/-06/-08/-09); ordering against Wave 3 E2E work, which exercises this code.
+  - Core = the balance calculations and the monthly roll-over (CLAUDE.md Hard rule 1). The roll-over decisions (register auto-creation, carry-forward to next month's opening, mismatch prompt) sat inside `src/components/register/RegisterView.tsx`, a UI component, so a CI guard couldn't protect them without firing on every UI change.
+  - Decided (Alex, 2026-10-29) and done in [#40](https://github.com/axerazo/dcr/issues/40): the three decisions moved to `src/lib/rollover.ts` (unit tests in `src/lib/rollover.test.ts`). The effects, refs and mutations stay in `RegisterView.tsx`.
+  - **Still roll-over logic in `RegisterView.tsx`** (out of scope for #40, so #28's path list can't drop the file yet):
+    - `doSoftClose`: the next-month opening update on Close & Archive ("Use closing" path; skipped when next month `is_locked`).
+    - `handleMismatchUseClosing`: the archived-next-month block (shows the inline message instead of updating).
+    - Related close-flow decisions, also left in place: `isHappyClose` (happy vs unhappy close prompt) and the stale `soft_closed` → `hard_closed` auto-correction.
+  - Options for #28: keep `RegisterView.tsx` in the guard's path list, or extract these into `rollover.ts` in a follow-up issue first.
   - Then #28's second question: a required label, or a failing check that a label clears.
+
+- **Roll-over: auto-update runs while this month is `ready_to_close`, the mismatch prompt doesn't** (touches-core, needs-decision)
+  - `shouldAutoUpdateNextOpening` (`src/lib/rollover.ts`) skips only a soft/hard-closed current month, so it still carries forward in `ready_to_close`. `shouldShowMismatchPrompt` requires `open`.
+  - SPEC §11 "Unhappy Path Prompt Suppression Rule" says the prompt shows when the current month is `open` **or `ready_to_close`**, so the prompt side diverges from the SPEC. Today, in `ready_to_close` with a manually entered or previously closed next month, neither fires. The close prompt's unhappy path is the only place the mismatch shows.
+  - Decide: does the prompt follow the SPEC (show in `ready_to_close`), or does the SPEC change to match the code? Pinned by `rollover.test.ts` ("this month ready_to_close → still updates", "this month ready_to_close → hidden"). Change those tests on purpose when the decision lands.
+
+- **Roll-over: `is_locked` is checked only by auto-update, not by the mismatch prompt** (touches-core, needs-decision)
+  - `shouldAutoUpdateNextOpening` returns false for a locked next month (SPEC §11 carry-forward rule: "Never updates a next month whose `is_locked = true`"). `shouldShowMismatchPrompt` only checks archive status (`soft_closed`/`hard_closed`), not `is_locked`.
+  - Per SPEC §11's status table, `is_locked = true` goes with `soft_closed`/`hard_closed`, so the two should coincide. A locked-but-not-archived next month would show a prompt whose "Use closing" action then updates it. (`handleMismatchUseClosing` checks archive status only, too.)
+  - Decide: should both decisions key on the same condition (archive status, `is_locked`, or both)? Pinned by `rollover.test.ts` ("next month locked → no update", "next month locked but not archived → still shows").
 
 - **E2E: void x status matrix** (test-only, no `src/` change; no legend tag applies)
   - Analysis: `CUJ-03_void_matrix_analysis.xlsx` (Matrix sheet). Summary below.
