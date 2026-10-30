@@ -5,7 +5,7 @@ Runbook for the two Claude GitHub workflows. Git and PR steps live in
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `.github/workflows/claude-code-review.yml` | PR opened, synchronized, reopened, ready for review | Runs the `code-review` plugin and posts findings as PR comments (`claude[bot]`) |
+| `.github/workflows/claude-code-review.yml` | PR marked **Ready for review** (once; later pushes don't re-run it) | Runs the `code-review` plugin and posts findings as PR comments (`claude[bot]`) |
 | `.github/workflows/claude.yml` | `@claude` in an issue, PR comment or review | Does what the comment asks; can read CI results (`actions: read`) |
 
 Both authenticate with the `CLAUDE_CODE_OAUTH_TOKEN` repo secret.
@@ -51,7 +51,27 @@ skipped. The change takes effect once merged.
 
 ---
 
-## 4. Approvals and sign-off
+## 4. A PR got no review, or needs another one
+
+The review runs only on `ready_for_review` (#53): the moment a **draft** PR is marked Ready for
+review. Opening, pushing and reopening don't trigger it.
+
+- **Opened as ready, not as a draft:** no `ready_for_review` event ever fires, so no review.
+  Open PRs as drafts (CLAUDE.md "PR flow").
+- **New commits after Ready for review:** not reviewed. To review again, flip it back:
+
+```bash
+gh pr ready <N> --undo    # back to draft
+gh pr ready <N>           # fires ready_for_review again
+```
+
+  Or comment `@claude review this PR` (runs `claude.yml`, not the review plugin).
+- **Merging right after Ready for review:** `claude-review` is not a required check, so the merge
+  doesn't wait for it. Wait for its comment before you merge.
+
+---
+
+## 5. Approvals and sign-off
 
 The bot comments; it does not approve. Your merge is the sign-off (CLAUDE.md "PR flow",
 `git-workflow-cheatsheet.md` §9).
