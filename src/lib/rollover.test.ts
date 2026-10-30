@@ -235,23 +235,33 @@ describe('auto-update and mismatch prompt', () => {
   it('never both fire for any status/flag combination', () => {
     const statuses: MonthStatus[] = ['open', 'ready_to_close', 'soft_closed', 'hard_closed']
     const both: string[] = []
-    for (const thisStatus of statuses)
-      for (const nextStatus of statuses)
-        for (const last_closed_type of [null, 'soft', 'hard'] as const)
-          for (const is_manual_opening of [false, true])
-            for (const is_locked of [false, true]) {
-              const input = {
-                register: thisMonth(thisStatus),
-                nextMonthReg: reg({ month_status: nextStatus, last_closed_type, is_manual_opening, is_locked }),
-                closingBalance: 1200,
-              }
-              if (
-                shouldAutoUpdateNextOpening(input) &&
-                shouldShowMismatchPrompt({ ...input, dismissedForBalance: null })
-              ) {
-                both.push(`this=${thisStatus} next=${nextStatus} closed=${last_closed_type} manual=${is_manual_opening} locked=${is_locked}`)
-              }
-            }
+    const check = (label: string, input: Parameters<typeof shouldAutoUpdateNextOpening>[0]) => {
+      if (
+        shouldAutoUpdateNextOpening(input) &&
+        shouldShowMismatchPrompt({ ...input, dismissedForBalance: null })
+      ) both.push(label)
+    }
+    for (const thisStatus of statuses) {
+      for (const closingBalance of [1200, 1000, null]) {
+        check(`this=${thisStatus} closing=${closingBalance} next=none`, {
+          register: thisMonth(thisStatus),
+          nextMonthReg: null,
+          closingBalance,
+        })
+        for (const nextStatus of statuses)
+          for (const last_closed_type of [null, 'soft', 'hard'] as const)
+            for (const is_manual_opening of [false, true])
+              for (const is_locked of [false, true])
+                check(
+                  `this=${thisStatus} closing=${closingBalance} next=${nextStatus} closed=${last_closed_type} manual=${is_manual_opening} locked=${is_locked}`,
+                  {
+                    register: thisMonth(thisStatus),
+                    nextMonthReg: reg({ month_status: nextStatus, last_closed_type, is_manual_opening, is_locked }),
+                    closingBalance,
+                  },
+                )
+      }
+    }
     expect(both).toEqual([])
   })
 })
