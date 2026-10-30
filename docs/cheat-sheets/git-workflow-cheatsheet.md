@@ -88,14 +88,18 @@ git push -u origin [branch name]
 ## 8. Open the PR
 
 ```bash
-gh pr create --fill                     # or open the compare URL GitHub prints after the push
+gh pr create --draft --fill             # or open the compare URL GitHub prints after the push
 ```
 
 ## 9. Review, wait for CI, merge
 
-- Wait for **Lint, build, test** and **E2E (Playwright)** to go green (required by the ruleset).
-- Mark the PR **Ready for review**: that starts the Claude review (it doesn't run on draft pushes).
-  Read its comment (`claude[bot]`) and any feedback; address it on the same branch.
+- Open the PR as a **draft**. The Claude review doesn't run on drafts.
+- When the work is done, mark it **Ready for review** (`gh pr ready <N>`). That's the "dev is
+  done" signal, and it starts the Claude review. Every later push re-runs it.
+- QA's sign-off starts after the review has posted (CLAUDE.md "PR flow" step 5): read the review
+  (`claude[bot]`) and address it on the same branch → manual steps, if any →
+  `npm run test:e2e:flake` → `core-change-approved` last (core PRs only) → merge.
+- **Lint, build, test** and **E2E (Playwright)** must be green (required by the ruleset).
 - Your merge is the approval.
 - **Exception:** a PR that changes `.github/workflows/claude-code-review.yml` is skipped by
   the review action by design (workflow validation). It works once merged.

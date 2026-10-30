@@ -16,6 +16,10 @@
   - Possible hardening: have the guard remove the label on `synchronize`, so every new commit needs fresh approval. That needs `pull-requests: write` (today the workflow has read only), and the label must then be re-applied after any "Update branch".
   - Required check: the user adds `Core guard` to the "main: PR + CI required" ruleset after #28 merges. Until then, a failing guard is visible but doesn't block merging.
 
+- **Claude review: "Update branch" and quick pushes each start a new review** (CI-only; no legend tag applies)
+  - Since #53, `claude-code-review.yml` runs on `ready_for_review` and every `synchronize` of a ready PR. "Update branch" is a `synchronize`, so it re-reviews a PR whose own changes didn't move. Concurrency cancels a review still running when a newer push lands, but a finished review is never deduplicated.
+  - Accepted cost for now. Revisit if duplicate reviews get expensive. Options: skip when the new head commit is a merge from `main`, or compare the PR diff against the last reviewed one.
+
 - **Roll-over: auto-update runs while this month is `ready_to_close`, the mismatch prompt doesn't** (touches-core, needs-decision)
   - `shouldAutoUpdateNextOpening` (`src/lib/rollover.ts`) skips only a soft/hard-closed current month, so it still carries forward in `ready_to_close`. `shouldShowMismatchPrompt` requires `open`.
   - SPEC §11 "Unhappy Path Prompt Suppression Rule" says the prompt shows when the current month is `open` **or `ready_to_close`**, so the prompt side diverges from the SPEC. Today, in `ready_to_close` with a manually entered or previously closed next month, neither fires. The close prompt's unhappy path is the only place the mismatch shows.
