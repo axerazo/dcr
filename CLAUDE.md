@@ -108,7 +108,8 @@ Two git worktrees of the same repo, each with its own branch and Claude session:
   relies on CI for E2E (see PR flow below).
 - Branch from `origin/main`, one branch per task (`fix/<issue>-<slug>`, `docs/<slug>`,
   `phase1/<slug>`). After the other lane merges, rebase onto `origin/main` before merging.
-- Every PR gets the automatic Claude review (`.github/workflows/claude-code-review.yml`);
+- Every PR gets the automatic Claude review (`.github/workflows/claude-code-review.yml`) once, when it is
+  marked Ready for review (not on draft pushes);
   `@claude` in PR/issue comments triggers `.github/workflows/claude.yml`. The user merges.
 - Tasks come from planning sessions and are tracked as GitHub issues (see "Planning → issues");
   reference the issue (`Fixes #N`) in the PR.

@@ -94,7 +94,8 @@ gh pr create --fill                     # or open the compare URL GitHub prints 
 ## 9. Review, wait for CI, merge
 
 - Wait for **Lint, build, test** and **E2E (Playwright)** to go green (required by the ruleset).
-- Read the Claude review comment (`claude[bot]`) and any feedback; address it on the same branch.
+- Mark the PR **Ready for review**: that starts the Claude review (it doesn't run on draft pushes).
+  Read its comment (`claude[bot]`) and any feedback; address it on the same branch.
 - Your merge is the approval.
 - **Exception:** a PR that changes `.github/workflows/claude-code-review.yml` is skipped by
   the review action by design (workflow validation). It works once merged.
