@@ -6,7 +6,8 @@
 // carries the closing balance forward on every transaction change.
 // Carry-forward rule = computeClosingBalance (last amount-bearing
 // non-void row, status-blind) — SPEC §9 Formulas C/E, settled
-// against the Excel oracle 2026-07.
+// against the Excel oracle 2026-07. The roll-over decisions live in
+// src/lib/rollover.ts; this component owns the effects and mutations.
 // ============================================================
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
@@ -14,6 +15,12 @@ import { useRegister, useCreateRegister, useUpdateRegister, useMostRecentRegiste
 import { useTransactions, useAddTransaction, useUpdateTransaction, useUpdateTransactionStatus, useDeleteTransaction } from '@/hooks/useTransactions'
 import { computeBalanceSummary, computeClosingBalance, formatCurrency, currencyEq } from '@/lib/balance'
 import { pendingTransactionCount, allTransactionsCleared } from '@/lib/monthStatus'
+import {
+  isArchived,
+  autoCreateOpeningBalance,
+  shouldAutoUpdateNextOpening,
+  shouldShowMismatchPrompt,
+} from '@/lib/rollover'
 import { writeAuditEntry } from '@/lib/audit'
 import { buildTransactionAuditEntries, isAuditedEditRegister } from '@/lib/transactionAudit'
 import { buildReconciliationContext } from '@/lib/reconciliation/buildContext'
@@ -121,9 +128,7 @@ export function RegisterView({ account }: RegisterViewProps) {
 
   // Derived from DB data — no local state needed. Survives navigation because it
   // recomputes from fresh nextMonthReg on every mount.
-  const nextMonthIsArchived =
-    nextMonthReg?.month_status === 'soft_closed' ||
-    nextMonthReg?.month_status === 'hard_closed'
+  const nextMonthIsArchived = isArchived(nextMonthReg)
 
   // Is the close prompt in "happy path" (balances already match, no next month, next
   // month is archived so its opening cannot be changed, or user explicitly acknowledged
@@ -134,30 +139,19 @@ export function RegisterView({ account }: RegisterViewProps) {
     currencyEq(closingBalance ?? 0, nextMonthReg.opening_balance) ||
     closeKeepAcknowledged
 
-  // Mismatch prompt — fully computed, no state. Must be declared here (before any
-  // early returns) to satisfy Rules of Hooks. Guards register null for the same reason.
-  // nextMonthIsArchived = true → always false; no setter can race the guard.
+  // Mismatch prompt — fully computed, no state (decision: shouldShowMismatchPrompt).
+  // Must be declared here (before any early returns) to satisfy Rules of Hooks.
   // Dismissed by writing dismissedForBalanceRef; re-arms when closingBalance changes.
-  const showMismatchPrompt = useMemo(() => {
-    if (!register || register.month_status !== 'open') return false
-    if (closingBalance == null) return false
-    if (nextMonthIsArchived) return false
-    if (!nextMonthReg) return false
-    if (currencyEq(closingBalance, nextMonthReg.opening_balance)) return false
-
-    // Require user decision when next month was previously committed (soft or hard
-    // closed and now reopened) OR manually entered — never silently overwrite a
-    // balance that was part of a committed record. SPEC §2.
-    const requiresDecision =
-      nextMonthReg.last_closed_type !== null || nextMonthReg.is_manual_opening === true
-
-    if (!requiresDecision) return false
-    if (
-      dismissedForBalanceRef.current !== null &&
-      currencyEq(dismissedForBalanceRef.current, closingBalance)
-    ) return false
-    return true
-  }, [register, nextMonthIsArchived, nextMonthReg, closingBalance])
+  const showMismatchPrompt = useMemo(
+    () =>
+      shouldShowMismatchPrompt({
+        register,
+        nextMonthReg,
+        closingBalance,
+        dismissedForBalance: dismissedForBalanceRef.current,
+      }),
+    [register, nextMonthReg, closingBalance],
+  )
 
   // Reset dismissal ref when closingBalance moves to a new value so the
   // mismatch prompt re-arms for the new balance.
@@ -172,38 +166,12 @@ export function RegisterView({ account }: RegisterViewProps) {
   }, [closingBalance])
 
   // --- Auto-update next month opening silently on every transaction change ---
-  // Guards (skip silently updating when):
-  //   • next month is archived (soft/hard closed) — show warning banner instead
-  //   • next month is locked (soft/hard closed)
-  //   • this month is itself soft/hard closed
-  //   • balances already match
-  //   • next month's opening was manually entered (is_manual_opening = true) —
-  //     in that case we show the mismatch prompt and wait for user decision,
-  //     never silently overwriting. SPEC §2: nothing changes without user knowledge.
+  // Decision: shouldAutoUpdateNextOpening (fresh open next months only; the
+  // previously-closed and manually-entered cases go through the mismatch prompt).
   useEffect(() => {
-    if (!register || !nextMonthReg) return
-    if (
-      register.month_status === 'soft_closed' ||
-      register.month_status === 'hard_closed'
-    ) return
-    if (closingBalance == null) return
-    if (currencyEq(closingBalance, nextMonthReg.opening_balance)) return
-
-    // Block carry-forward if next month is archived — prompt is suppressed via
-    // the computed showMismatchPrompt, no state needed here.
-    if (
-      nextMonthReg.month_status === 'soft_closed' ||
-      nextMonthReg.month_status === 'hard_closed'
-    ) return
-
-    if (nextMonthReg.is_locked) return
-
-    // Do not silently update previously committed months (soft or hard closed,
-    // now reopened) or manually-entered openings — showMismatchPrompt handles both.
-    if (nextMonthReg.last_closed_type !== null || nextMonthReg.is_manual_opening) return
-
-    // Normal carry-forward: only for genuinely fresh open months (last_closed_type = null,
-    // is_manual_opening = false). SPEC §2: nothing changes without user knowledge.
+    if (!shouldAutoUpdateNextOpening({ register, nextMonthReg, closingBalance })) return
+    // Narrowing for TS — shouldAutoUpdateNextOpening already returned false for these.
+    if (!nextMonthReg || closingBalance == null) return
     updateRegister.mutate({
       id: nextMonthReg.id,
       opening_balance: closingBalance,
@@ -239,7 +207,7 @@ export function RegisterView({ account }: RegisterViewProps) {
       account_id: account.id,
       month: activeMonth,
       year: activeYear,
-      opening_balance: computeClosingBalance(carrySource.opening_balance, carrySourceTxs),
+      opening_balance: autoCreateOpeningBalance(carrySource, carrySourceTxs),
       is_manual_opening: false,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
