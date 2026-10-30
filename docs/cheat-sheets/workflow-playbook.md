@@ -9,8 +9,8 @@ in CLAUDE.md ("Parallel workflow", "PR flow"). Git and PR commands are in
 ## A. One-time setup (confirm each is done)
 
 - [ ] Archive the old DCR Desktop project. Keep DCR Planning only.
-- [ ] Retire `planning/PLAN.md` (the issues are the backlog) and make CLAUDE.md "Planning → issues"
-      match.
+- [x] Retire `planning/PLAN.md` (the issues are the backlog) and make CLAUDE.md "Planning → issues"
+      match. Done in #57; the contract is `docs/PLANNING_HANDOFF.md`.
 - [ ] Core guard is listed as Required in the "main: PR + CI required" ruleset.
 - [ ] Allow the safe commands (tests, build, lint, `git add`/`commit`, `gh issue view`) in
       `.claude/settings.json`.
@@ -36,7 +36,7 @@ in CLAUDE.md ("Parallel workflow", "PR flow"). Git and PR commands are in
 
 ## C. Dev lane (VS Code → `C:\workspace\dcr-dev`)
 
-1. Check the window title, and let the sync hook pull if needed.
+1. Check the window title. If the sync hook says "behind," say yes to the pull.
 2. > "Work issue #N. Read it with `gh issue view N --comments`; comments supersede the body.
    > Follow CLAUDE.md. Plan first and wait for approval."
 3. Review the plan (5–10 min) and answer every question before you leave.
@@ -61,7 +61,8 @@ in CLAUDE.md ("Parallel workflow", "PR flow"). Git and PR commands are in
 3. `npm run test:e2e:flake` on the affected specs.
 4. Core PRs only: apply `core-change-approved` last.
 5. Check the keyword: `Refs` means you close the issue by hand after the proof.
-6. Squash and merge, then `git pull` in both lanes.
+6. Squash and merge, then `git switch main && git pull` in the test lane. The dev lane needs
+   nothing; it branches from a fresh `origin/main` at its next task.
 
 ---
 

@@ -48,7 +48,6 @@ it governs, and cite the section (e.g., "SPEC §9") in commit messages when rele
   reads the core path list from `.github/core-paths.txt` (Hard rule 1)
 - `docs/` — `BACKLOG.md` (known gaps and bugs), `DCR_Phase0_Audit.md`, `e2e/TEST_PLAN.md`,
   `golden-master/`, `PLANNING_HANDOFF.md`
-- `planning/PLAN.md` — rolling planning file (cases between planning chats)
 - Transaction lifecycle (six states): recorded, scheduled, in_flight, pending,
   cleared, void. Void rows: balance = null, excluded from all balance math.
 
@@ -129,17 +128,22 @@ Two git worktrees of the same repo, each with its own branch and Claude session:
 ### Planning → issues (where tasks come from)
 
 Planning happens outside the repo, in a Claude app Project ("DCR Planning"). Each planning
-chat reads the docs from a fresh clone of the repo, so none are kept as project knowledge (a
-copy would go stale). The rolling file `planning/PLAN.md` carries the cases between chats;
-`docs/PLANNING_HANDOFF.md` is the contract for that file and for filing issues from it.
+chat reads live state from GitHub (open issues with labels, PRs merged since the last session,
+`docs/BACKLOG.md`), never from memory, so no docs are kept as project knowledge (a copy would
+go stale). `docs/PLANNING_HANDOFF.md` is the contract for sessions and for filing issues.
 Never add the Excel workbook or anything derived from it (Hard rule 3).
-- Each planning session ends with the full updated `planning/PLAN.md`, committed via a docs PR.
-  Each case in it has the shape of `.github/ISSUE_TEMPLATE/task.md`: summary, why, acceptance
-  criteria (the oracle), lane, SPEC/TEST_PLAN refs, and blocked-by/blocks links.
-- When the user asks, the planning chat files only the cases marked `Ready` as GitHub issues
-  through the GitHub connector (a VS Code session can do the same with `gh issue create`),
-  shows the issue numbers and links dependencies.
-- Issues are the backlog. Lanes pick them up by number; nothing is re-explained.
+- **Issues are the backlog; labels are the status.** There is no planning file
+  (`planning/PLAN.md` was retired 2026-10-30). An issue is ready when it is open, has a
+  `lane:*` label, and has neither `blocked` nor `needs-decision`. Decisions on an issue go in a
+  planning comment; comments supersede the body. Ideas not ready to be tasks go in
+  `docs/BACKLOG.md`.
+- Each issue has the shape of `.github/ISSUE_TEMPLATE/task.md`: summary, why, acceptance
+  criteria (the oracle), lane, closing (`Fixes` or `Refs`, stated up front), SPEC/TEST_PLAN
+  refs, and blocked-by/blocks links.
+- When the user asks, the planning chat files the drafted issues through the GitHub connector
+  (a VS Code session can do the same with `gh issue create`), shows the issue numbers and links
+  dependencies.
+- Lanes pick issues up by number; nothing is re-explained.
 - Decisions that change how we work go into this file (via PR), not just into chat.
 
 ### PR flow: dev → QA → merge (the PR is the meeting point)
