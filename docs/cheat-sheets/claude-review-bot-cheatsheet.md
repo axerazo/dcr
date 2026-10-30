@@ -61,7 +61,7 @@ sign-off starts after the review has posted.
 |---|---|
 | Draft opened, or a push to a draft | **Skipped** (grey). A run is created but the job doesn't execute: no review, no tokens |
 | Draft marked Ready for review | Runs once |
-| Push to a ready PR | Runs again, on the new commit |
+| Push to a ready PR | Runs again and posts a new review of the **full** PR diff. An earlier finding can reappear if it wasn't fixed. A trivial PR (e.g. a one-line docs fix) may still be skipped by the plugin's "doesn't need review" check, at Ready or after, on purpose |
 | Push while a review is still running | The older run shows **Cancelled**: a newer push replaced it, not a failure. Only the newest commit's review posts |
 | **Update branch** on a ready PR | Runs again. It's a push, even though only `main`'s changes came in. Accepted cost (BACKLOG) |
 | Converted back to draft | Nothing runs until it's marked ready again |
@@ -89,4 +89,5 @@ The bot comments; it does not approve. Your merge is the sign-off (CLAUDE.md "PR
 | No review on a workflow-editing PR | Workflow validation | Expected (§3) |
 | `claude-review` **Skipped** | The PR is a draft | Expected; mark it ready when done (§4) |
 | `claude-review` **Cancelled** | A newer push replaced a review still running | Not a failure; the newest commit's run posts (§4) |
+| `claude-review` green after a push, but no new comment | The plugin's step 1 judged the PR trivial, or the prompt override (#53) was ignored | Trivial: expected. Otherwise check the prompt in `claude-code-review.yml` (§4) |
 | `@claude` comment does nothing | `claude.yml` only runs when the body (or issue title) contains `@claude` | Include `@claude` in the comment itself |
