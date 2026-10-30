@@ -95,6 +95,9 @@ it governs, and cite the section (e.g., "SPEC §9") in commit messages when rele
 
 ## Parallel workflow (two lanes)
 
+Day-to-day steps, from planning through merge, are on one page:
+`docs/cheat-sheets/workflow-playbook.md`. This section holds the rules behind them.
+
 Two git worktrees of the same repo, each with its own branch and Claude session:
 
 | Folder | Lane | Scope |
