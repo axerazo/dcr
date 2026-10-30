@@ -2,7 +2,7 @@
 //
 // Fails a PR that touches a core path (.github/core-paths.txt) until the
 // core-change-approved label is applied, and names every core file it touched.
-// Runs from the BASE branch under pull_request_target: it never checks out or
+// Runs from the DEFAULT branch (main) under pull_request_target: it never checks out or
 // runs PR code. The changed-file list comes from the GitHub API only.
 
 import { readFileSync, appendFileSync } from 'node:fs'

@@ -5,7 +5,9 @@ name: Core guard
 # Issue #28, CLAUDE.md Hard rule 1.
 #
 # pull_request_target, not pull_request: the workflow and the script always
-# come from the BASE branch, so a PR cannot change its own guard. SECURITY:
+# come from the DEFAULT branch (main), whatever the PR targets, so a PR cannot
+# run or change its own guard. A PR into another branch is still checked
+# against main's guard and path list. SECURITY:
 # never check out, install or run PR code in this workflow. The changed-file
 # list comes from the GitHub API only.
 #
@@ -18,7 +20,7 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
-  contents: read        # check out the base branch (the guard's own files)
+  contents: read        # check out main (the guard's own files)
   pull-requests: read   # list the PR's changed files
 
 concurrency:
@@ -30,7 +32,7 @@ jobs:
     name: Core guard
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout base branch (never the PR head)
+      - name: Checkout main (never the PR head)
         uses: actions/checkout@v4
         with:
           persist-credentials: false

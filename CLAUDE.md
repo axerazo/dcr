@@ -158,7 +158,7 @@ Never add the Excel workbook or anything derived from it (Hard rule 3).
      its own passes; core code changed together with golden expectations gets a stronger
      "golden master proves nothing" failure. The `core-change-approved` label clears the check.
      **Apply `core-change-approved` only as the last step before merging, after the final
-     commit.** Only the user applies it; Claude never does. The guard runs from the base branch
+     commit.** Only the user applies it; Claude never does. The guard runs from `main`
      (`pull_request_target`), so a PR's edits to the guard take effect only after it merges.
 5. **Merge (QA's sign-off):** after the flake check passes, the user clicks **Ready for review**
    (the button in the merge box at the bottom of the Conversation tab; or `gh pr ready <N>`), then:
