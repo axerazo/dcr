@@ -54,8 +54,9 @@ export function TransactionTable({
     setEditingOpeningBalance(false)
   }
 
+  // data-register-scroll: TransactionRow measures this container to place the status menu (#59)
   return (
-    <div className="overflow-auto flex-1">
+    <div className="overflow-auto flex-1" data-register-scroll>
       <table className="w-full text-sm border-collapse min-w-[800px]">
         <thead className="sticky top-0 z-20">
           <tr className="bg-slate-700 text-xs font-semibold text-slate-200 uppercase tracking-wider">
