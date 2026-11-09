@@ -3,9 +3,10 @@
 // SPEC §6: columns B–I; §11: row limit 220; §9: Formula D
 // ============================================================
 
-import { useState } from 'react'
+import { useState, useRef, useLayoutEffect } from 'react'
 import { computeRunningBalance, formatCurrency } from '@/lib/balance'
 import { TransactionRow, NewTransactionRow } from './TransactionRow'
+import { findLandingTransactionId, todayIso } from './landingRow'
 import type { DbTransaction, DbRegister } from '@/types'
 
 interface TransactionTableProps {
@@ -41,6 +42,37 @@ export function TransactionTable({
 }: TransactionTableProps) {
   const [editingOpeningBalance, setEditingOpeningBalance] = useState(false)
   const [openingBalanceDraft, setOpeningBalanceDraft] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const landedRegisterIdRef = useRef<string | null>(null)
+
+  // #61: when a register is first shown, open scrolled to its most recent entry dated on or
+  // before today. Once per register, so saves, edits and status changes (which change
+  // `transactions` but not the register) never move the view. Runs before paint (no jump).
+  useLayoutEffect(() => {
+    if (landedRegisterIdRef.current === register.id) return
+    // Insurance only: RegisterView shows its loading screen while a month's transactions
+    // load, so the table never sees another register's rows today. Vacuous for [].
+    if (transactions.some((t) => t.register_id !== register.id)) return
+    landedRegisterIdRef.current = register.id
+
+    const container = scrollRef.current
+    if (!container) return
+    const landingId = findLandingTransactionId(transactions, todayIso())
+    const row = landingId
+      ? container.querySelector<HTMLElement>(`tr[data-tx-id="${landingId}"]`) // ids are UUIDs
+      : null
+    if (!row) {
+      container.scrollTop = 0
+      return
+    }
+    // Center the row in the visible area below the sticky header + opening-balance row.
+    // Setting scrollTop on the container (not scrollIntoView) never scrolls the page itself;
+    // the browser clamps the value to the scrollable range.
+    const headerHeight = container.querySelector('thead')?.getBoundingClientRect().height ?? 0
+    const rowTop = row.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop
+    const visibleBelowHeader = container.clientHeight - headerHeight
+    container.scrollTop = rowTop - headerHeight - (visibleBelowHeader - row.offsetHeight) / 2
+  }, [register.id, transactions])
 
   const withBalances = computeRunningBalance(register.opening_balance, transactions)
   const nextRowOrder = transactions.length > 0
@@ -56,7 +88,7 @@ export function TransactionTable({
 
   // data-register-scroll: TransactionRow measures this container to place the status menu (#59)
   return (
-    <div className="overflow-auto flex-1" data-register-scroll>
+    <div ref={scrollRef} className="overflow-auto flex-1" data-register-scroll>
       <table className="w-full text-sm border-collapse min-w-[800px]">
         <thead className="sticky top-0 z-20">
           <tr className="bg-slate-700 text-xs font-semibold text-slate-200 uppercase tracking-wider">
