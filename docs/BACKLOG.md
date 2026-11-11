@@ -92,6 +92,12 @@
   - Guardrail: filter at render time, after running balances are computed. Do not touch `src/lib/balance.ts` (CLAUDE.md hard rule 1). Hiding a row must not change any balance.
   - Tests when built: add toggle cases to the void matrix (hidden -> row absent, all balances identical).
 
+- **Monthly Bills modal: Household and Credit Cards tabs** (touches-data; touches-core if bills recur automatically)
+  - A modal titled Monthly Bills with two tabs, Household (mortgage, property tax, utilities) and Credit Cards. Bills entered there appear in the register.
+  - Safe design: each bill creates an ordinary transaction in the `scheduled` state, so the balance engine sees normal rows. Avoid storing bills separately and merging them into the register display, which would reach into balance math.
+  - Decide: does a bill create only the next month's transaction, or recur every month? Automatic recurrence across months touches the roll-over (core).
+  - Parked by Alex, 2026-11-06, to rethink before shaping.
+
 ### **LEGEND:**
 
 Tag List to use:
