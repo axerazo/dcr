@@ -60,6 +60,7 @@
   - Audit: voids now write a `voided` audit row (issue #12), so every case can assert one (`value_before` = the starting status, `value_after` = `void`), and each case's user stays in the local database after the run (TEST_PLAN section 6).
 
 - **AI reconciliation: scrap and redesign** (touches-data, needs-decision)
+  - Tracked in [#71](https://github.com/axerazo/dcr/issues/71) (design decisions; build tasks get their own issues).
   - The current flow doesn't work the way it was intended and will be replaced, not repaired:
     `src/lib/reconciliation/` (system prompt, context builder, `reconciliationService.ts`),
     `src/components/reconciliation/`, and the hooks that feed them. CUJ-11 stays on hold.
