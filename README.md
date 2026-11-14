@@ -1,6 +1,6 @@
 # Digital Check Register ![CI](https://github.com/axerazo/dcr/actions/workflows/ci.yml/badge.svg)
 
-**A differential validation harness for AI-generated output — and the ledger-first finance application it validates.**
+**Validating AI-written code against an independent oracle: a ledger-first finance app whose core calculations are diffed to the cent as it evolves.**
 
 > **Status:** Active development, personal project. Not deployed. Not production-ready.
 
@@ -60,9 +60,9 @@ npm run test:ui    # Vitest with UI
 npm run test:e2e   # Playwright end-to-end suite
 ```
 
-**Unit suite — 79 tests, CI green.** Covers the `balance.ts` financial math layer: running balance computation, current/available/closing balance derivation, in-flight detection, and currency comparison with half-cent tolerance. Established as a golden-master suite in Phase 1 and extended through Phase 1.5.
+**Unit suite: 167 tests across 6 files, CI green.** The `balance.ts` financial math layer (running balance, current/available/closing balance derivation, in-flight detection, half-cent currency comparison) is covered by the balance and golden-master suites, established in Phase 1 and extended through Phase 1.5. Further files cover month-rollover (carry-forward) calculations, transaction audit logging, the core-guard CI check, and menu placement.
 
-**End-to-end: CUJ-01–06 implemented (Waves 1–2), CI green.** Playwright runs against the production build in CI, on a local Supabase stack with a freshly seeded user per test, held to a zero-flake bar (3 runs, no retries). Wave 3 (CUJ-07–10) is next. CUJ-11 (AI reconciliation) is on hold while that feature is re-planned.
+**End-to-end: CUJ-01–06 implemented (Waves 1–2), CI green.** Playwright runs against the production build in CI, on a local Supabase stack with a freshly seeded user per test, held to a zero-flake bar (3 runs, no retries). Wave 3 (CUJ-07–10) is in progress. CUJ-11 (AI reconciliation) is on hold while that feature is re-planned.
 
 **[`docs/e2e/TEST_PLAN.md`](./docs/e2e/TEST_PLAN.md)** defines the E2E strategy: 12 critical user journeys across four implementation waves, traceability to SPEC sections, P0–P2 priority tiering, an explicit oracle definition per journey, and a written definition of done.
 
@@ -131,7 +131,7 @@ README.md            This file
 
 A reviewer's index: each claim links to the evidence in this repo. The project is built as AI-augmented QA engineering: I own the oracles and the test logic, AI writes within written rules ([`CLAUDE.md`](./CLAUDE.md)), and CI enforces the standard.
 
-- **Test strategy with an explicit oracle.** Twelve critical user journeys, each with a written oracle ([TEST_PLAN](./docs/e2e/TEST_PLAN.md) §4), and anything provable at a lower layer pushed down to Vitest (§1). CUJ-01–06 are implemented in [`e2e/`](./e2e/); CUJ-07–10 are next.
+- **Test strategy with an explicit oracle.** Twelve critical user journeys, each with a written oracle ([TEST_PLAN](./docs/e2e/TEST_PLAN.md) §4), and anything provable at a lower layer pushed down to Vitest (§1). CUJ-01–06 are implemented in [`e2e/`](./e2e/); CUJ-07–10 are in progress.
 - **A zero-flake bar enforced by a command.** `npm run test:e2e:flake` runs the suite three times with no retries and one worker ([`package.json`](./package.json)). A test that passes only on retry counts as a failure ([`CLAUDE.md`](./CLAUDE.md), "E2E tests").
 - **Isolated, deterministic tests.** Every test seeds its own user, and the browser clock is pinned with `setFixedTime` to remove a month-boundary race ([`e2e/fixtures/seed.ts`](./e2e/fixtures/seed.ts)). The division of labor is written down: Claude may author fixtures and infrastructure, while spec logic and oracles are human-authored ([TEST_PLAN](./docs/e2e/TEST_PLAN.md) §1, "Pairing sessions").
 - **An independent correctness standard for AI-assisted work.** A golden-master suite ([`src/lib/golden.test.ts`](./src/lib/golden.test.ts), [fixture schema](./docs/golden-master/FIXTURE_SCHEMA.md)) plus the differential validation described in [The validation problem](#the-validation-problem).
