@@ -11,6 +11,11 @@ import { AutocompleteInput } from '@/components/ui/AutocompleteInput'
 import { formatCurrency, parseCurrencyInput } from '@/lib/balance'
 import { useSuggestions, invalidateSuggestionCache } from '@/hooks/useSuggestions'
 import type { Transaction, TransactionStatus } from '@/types'
+import { chooseMenuPlacement, type MenuPlacement } from './menuPlacement'
+import { todayIso } from './landingRow'
+
+// Matches the menu's mt-1 / mb-1
+const STATUS_MENU_GAP_PX = 4
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
@@ -65,10 +70,34 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const schedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const statusMenuRef = useRef<HTMLDivElement>(null)
+  const statusDropdownRef = useRef<HTMLDivElement>(null)
+  const [menuPlacement, setMenuPlacement] = useState<MenuPlacement>('down')
 
   // Autocomplete suggestions — hooks called unconditionally; return [] when editing is null
   const descSuggestions  = useSuggestions(accountId, 'description', editing?.description ?? '')
   const notesSuggestions = useSuggestions(accountId, 'notes',       editing?.notes       ?? '')
+
+  // #59: open the status menu upward when it would overflow the bottom of the register's
+  // scroll container (that overflow grew the page on the last rows). Runs before paint,
+  // so the menu never flashes in the wrong place.
+  useLayoutEffect(() => {
+    if (!statusMenuOpen) return
+    const trigger = statusMenuRef.current
+    const menu = statusDropdownRef.current
+    if (!trigger || !menu) return
+    const container = trigger.closest<HTMLElement>('[data-register-scroll]')
+    const containerRect = container?.getBoundingClientRect()
+    const headerBottom = container?.querySelector('thead')?.getBoundingClientRect().bottom ?? 0
+    const triggerRect = trigger.getBoundingClientRect()
+    setMenuPlacement(chooseMenuPlacement({
+      triggerTop: triggerRect.top,
+      triggerBottom: triggerRect.bottom,
+      menuHeight: menu.offsetHeight,
+      containerTop: Math.max(containerRect?.top ?? 0, headerBottom, 0),
+      containerBottom: Math.min(containerRect?.bottom ?? window.innerHeight, window.innerHeight),
+      gap: STATUS_MENU_GAP_PX,
+    }))
+  }, [statusMenuOpen])
 
   // Close status menu when clicking outside
   useEffect(() => {
@@ -209,6 +238,7 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
 
   return (
     <tr
+      data-tx-id={tx.id}
       className={`group border-b border-slate-200 text-sm transition-colors ${zebraClass} ${rowClass} ${
         isVoid ? 'line-through text-slate-400' : ''
       } ${isLocked ? 'cursor-default' : 'cursor-text'} ${
@@ -312,7 +342,13 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
 
           {/* Dropdown menu — click-triggered, stays open until selection or outside click */}
           {statusMenuOpen && (
-            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-50 bg-white shadow-xl rounded-lg border border-slate-200 py-1 min-w-[140px]">
+            <div
+              ref={statusDropdownRef}
+              data-placement={menuPlacement}
+              className={`absolute left-1/2 -translate-x-1/2 ${
+                menuPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+              } z-50 bg-white shadow-xl rounded-lg border border-slate-200 py-1 min-w-[140px]`}
+            >
               {statusOptions.map((opt) => (
                 <button
                   key={opt.value}
@@ -485,11 +521,6 @@ interface NewTransactionRowProps {
     scheduled_date?: string | null
     status?: TransactionStatus
   }) => void
-}
-
-function todayIso() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function blankDraft(): EditState {
