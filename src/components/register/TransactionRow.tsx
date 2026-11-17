@@ -12,6 +12,7 @@ import { formatCurrency, parseCurrencyInput } from '@/lib/balance'
 import { useSuggestions, invalidateSuggestionCache } from '@/hooks/useSuggestions'
 import type { Transaction, TransactionStatus } from '@/types'
 import { chooseMenuPlacement, type MenuPlacement } from './menuPlacement'
+import { todayIso } from './landingRow'
 
 // Matches the menu's mt-1 / mb-1
 const STATUS_MENU_GAP_PX = 4
@@ -237,6 +238,7 @@ export function TransactionRow({ transaction: tx, rowIndex, isLocked, accountId,
 
   return (
     <tr
+      data-tx-id={tx.id}
       className={`group border-b border-slate-200 text-sm transition-colors ${zebraClass} ${rowClass} ${
         isVoid ? 'line-through text-slate-400' : ''
       } ${isLocked ? 'cursor-default' : 'cursor-text'} ${
@@ -519,11 +521,6 @@ interface NewTransactionRowProps {
     scheduled_date?: string | null
     status?: TransactionStatus
   }) => void
-}
-
-function todayIso() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function blankDraft(): EditState {
