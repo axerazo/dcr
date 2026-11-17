@@ -54,7 +54,7 @@ export class RegisterPage {
         this.editBalanceButton = this.page.getByRole('button', { name: 'Edit opening balance' })
         this.saveButton = this.page.getByRole('button', { name: 'Save' })
         this.cancelButton = this.page.getByRole('button', { name: 'Cancel' })
-        this.openingBalance = this.page.getByRole('cell', { name: '$' })
+        this.openingBalance = this.page.getByRole('row').filter({ hasText: 'Opening Balance' }).getByRole('cell', { name: /\$/})
         this.initializeContainer = this.page.getByRole('heading', { name: /^Initialize / })
         this.archiveBanner = this.page.getByText(/ is archived — read-only\.$/)
         this.fullyReconciledBanner = this.page.getByText('✅ Fully reconciled — all')

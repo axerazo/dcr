@@ -59,6 +59,26 @@
   - Also worth a case (from `monthStatus.ts`, not from the spreadsheet): voiding the last uncleared row of a month should take it open -> ready_to_close, because void is excluded from the uncleared count.
   - Audit: voids now write a `voided` audit row (issue #12), so every case can assert one (`value_before` = the starting status, `value_after` = `void`), and each case's user stays in the local database after the run (TEST_PLAN section 6).
 
+- **AI reconciliation: scrap and redesign** (touches-data, needs-decision)
+  - Tracked in [#71](https://github.com/axerazo/dcr/issues/71) (design decisions; build tasks get their own issues).
+  - The current flow doesn't work the way it was intended and will be replaced, not repaired:
+    `src/lib/reconciliation/` (system prompt, context builder, `reconciliationService.ts`),
+    `src/components/reconciliation/`, and the hooks that feed them. CUJ-11 stays on hold.
+  - **Don't patch the current code.** No model bump (it still calls `claude-sonnet-4-6`), no bug
+    fixes, no new features on it. Changes wait for the redesign.
+  - Intended behavior: _to be written in a planning session._
+  - Carry into the redesign:
+    - Assistive only: it may suggest matches and surface discrepancies, never apply a transition;
+      every transition goes through `src/lib/audit.ts` (CLAUDE.md hard rule 5).
+    - No browser-side key: build on the Supabase Edge Function proxy (hard rule 4; Phase 2).
+    - No workbook data in prompts or fixtures (hard rule 3).
+    - Current models return a thinking block before the text, so parse the first `text` block
+      and check `stop_reason` (including `refusal`), rather than reading `content[0]`.
+  - Decide: remove the current feature now, or leave it until the replacement lands? Removing it
+    early drops the SDK from the browser bundle (clears both build warnings below) and the
+    browser-key weakness before Phase 2.
+  - When it's designed: rewrite CUJ-11's oracle in TEST_PLAN §4, then file issues.
+
 - **Build warning: Anthropic SDK pulls `node:fs` / `node:path` into the browser bundle** (touches-core)
   - Seen in every production build (`build:test`, CI E2E). Vite externalizes them from the `@anthropic-ai/sdk` credential modules. Harmless but noisy.
   - Root cause: the SDK runs browser-side (`dangerouslyAllowBrowser`, CLAUDE.md hard rule 4).
@@ -79,7 +99,7 @@
   - CLAUDE.md E2E convention: selector workarounds are logged here instead of being fixed in a test PR. Today `e2e/pages/RegisterPage.ts` needs these workarounds:
     - **Header balances:** `actualBalance` / `availableBalance` find the amount by its label text, then `xpath=preceding-sibling::span`. Fix: label the amount itself (e.g. `aria-label="Actual Balance"`, or a `<dl>`/`<dt>`/`<dd>` pair).
     - **Shown year in month navigation:** `shownYear` uses `:scope > div > span` inside the "Month navigation" landmark. Fix: give the year an accessible name or role (e.g. `aria-label="Shown year"` or `aria-live` text).
-    - **Opening balance cell:** `openingBalance` matches `getByRole('cell', { name: '$' })`, which relies on the cell's text starting with `$`. Fix: an accessible name such as `aria-label="Opening balance"`.
+    - **Opening balance cell:** `openingBalance` finds the row containing "Opening Balance", then the cell whose text contains `$` (#69). It still relies on visible text. Fix: an accessible name such as `aria-label="Opening balance"`.
     - **Row status button:** its accessible name is its icon glyph. A recorded row's button is named `○` (`TransactionRow.tsx`), because the `title` ("Status: … — click to change") doesn't count as the name when there is text content. Menu options read as e.g. "Cleared Cleared" (icon plus label). Fix: `aria-label` on the button (e.g. "Status: recorded"), and hide the decorative icon from the options (`aria-hidden`).
   - When a fix lands, the test lane updates the matching `RegisterPage` locator in its own PR.
   - Note: a similar `aria-label` item was recorded in an untracked local BACKLOG copy on 2026-10-12 and lost. That copy was not found in either worktree or in git history, so this entry was rebuilt from the current code, not from memory.
