@@ -15,14 +15,16 @@
   },
   "permissions": {
     "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Bash(supabase link:*)",
-      "Bash(supabase db push:*)",
-      "Bash(npm run dev)",
-      "Bash(gh pr merge:*)",
-      "Bash(git push --force:*)",
-      "Bash(git push origin main:*)"
-    ]
+      "Read(//**/.env)",
+      "Read(//**/.env.*)",
+      "Bash(supabase link *)", "Bash(npx supabase link *)",
+      "Bash(supabase db push *)", "Bash(npx supabase db push *)",
+      "Bash(npm run dev *)", "Bash(npx vite *)",
+      "Bash(gh pr merge *)",
+      "Bash(git push --force *)", "Bash(git push -f *)", "Bash(git push origin main *)",
+      "PowerShell"
+    ],
+    "blockReadsOutsideWorkingDirectories": true,
+    "disableBypassPermissionsMode": "disable"
   }
 }
