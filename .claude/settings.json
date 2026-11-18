@@ -12,5 +12,17 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Bash(supabase link:*)",
+      "Bash(supabase db push:*)",
+      "Bash(npm run dev)",
+      "Bash(gh pr merge:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push origin main:*)"
+    ]
   }
 }
