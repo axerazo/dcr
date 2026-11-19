@@ -33,7 +33,9 @@
       "Bash(git add .)", "Bash(git add -A *)", "Bash(git add --all *)",
       "Bash(git push *:main*)",
       "PowerShell",
-      "Bash(npm run test:e2e:clean *)", "Bash(supabase db reset *)", "Bash(npx supabase db reset *)"
+      "Bash(npm run test:e2e:clean *)", "Bash(supabase db reset *)", "Bash(npx supabase db reset *)",
+      "Bash(git push * --force*)", "Bash(git push * -f *)", "Bash(git push * --delete*)", "Bash(git push * -d *)",
+      "Bash(git push * -f)", "Bash(git push * -d)"
     ],
     "blockReadsOutsideWorkingDirectories": true,
     "disableBypassPermissionsMode": "disable"
